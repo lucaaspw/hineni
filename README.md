@@ -1,36 +1,162 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hineni - Sistema de Repertório de Louvores
 
-## Getting Started
+Sistema moderno para gerenciamento de repertório de músicas para igreja, desenvolvido com Next.js, TypeScript, Tailwind CSS e Prisma.
 
-First, run the development server:
+## 🚀 Funcionalidades
+
+- **Repertório Semanal**: Visualização das músicas da semana
+- **Biblioteca de Louvores**: Catálogo completo de músicas
+- **Área Administrativa**: Gerenciamento de músicas e repertório
+- **Design Responsivo**: Otimizado para mobile e desktop
+- **Tema Claro/Escuro**: Suporte a múltiplos temas
+- **PWA**: Instalável como app no celular
+
+## 🛠️ Tecnologias
+
+- **Next.js 14** com Turbopack
+- **TypeScript**
+- **Tailwind CSS**
+- **Prisma** (PostgreSQL)
+- **Radix UI**
+- **Next Themes**
+- **JWT** para autenticação
+
+## 📦 Instalação
 
 ```bash
+# Instalar dependências
+npm install
+
+# Configurar banco de dados
+npm run db:push
+
+# Inserir dados de exemplo
+npm run db:seed
+
+# Iniciar desenvolvimento
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔐 Credenciais de Acesso
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Usuário:** `hineni`
+- **Senha:** `hineni25`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎯 Scripts Disponíveis
 
-## Learn More
+```bash
+# Desenvolvimento com Turbopack
+npm run dev
 
-To learn more about Next.js, take a look at the following resources:
+# Build para produção
+npm run build
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Iniciar produção
+npm run start
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Banco de dados
+npm run db:push
+npm run db:seed
+```
 
-## Deploy on Vercel
+## 📁 Estrutura do Projeto
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+hineni/
+├── src/
+│   ├── app/                 # App Router (Next.js 14)
+│   │   ├── admin/          # Área administrativa
+│   │   ├── api/            # Rotas da API
+│   │   ├── louvores/       # Biblioteca de músicas
+│   │   └── login/          # Página de login
+│   ├── components/         # Componentes React
+│   │   ├── ui/            # Componentes base
+│   │   └── ...            # Componentes específicos
+│   └── lib/               # Utilitários e configurações
+├── prisma/                # Schema e migrations
+├── public/                # Arquivos estáticos
+└── scripts/               # Scripts auxiliares
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🌟 Recursos Mobile
+
+- **Design Mobile-First**: Interface otimizada para telas pequenas
+- **Touch-Friendly**: Botões e elementos adequados para toque
+- **PWA Ready**: Instalável como app no celular
+- **Performance**: Turbopack para desenvolvimento rápido
+- **Responsivo**: Adapta-se a qualquer tamanho de tela
+
+## 🔧 Configurações
+
+### Variáveis de Ambiente
+
+Crie um arquivo `.env.local`:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/hineni"
+JWT_SECRET="seu-secret-jwt-aqui"
+```
+
+### Banco de Dados
+
+O projeto usa PostgreSQL com Prisma. Para configurar:
+
+```bash
+# Instalar PostgreSQL
+# Configurar DATABASE_URL no .env.local
+npm run db:push
+npm run db:seed
+```
+
+## 📱 PWA Features
+
+- **Instalável**: Adicionar à tela inicial
+- **Offline**: Cache de recursos estáticos
+- **App-like**: Experiência similar a app nativo
+- **Notificações**: Suporte a push notifications (futuro)
+
+## 🎨 Temas
+
+O sistema suporta:
+
+- **Tema Claro**: Para ambientes bem iluminados
+- **Tema Escuro**: Para ambientes com pouca luz
+- **Tema Automático**: Segue preferência do sistema
+
+## 🚀 Deploy
+
+### Vercel (Recomendado)
+
+```bash
+# Instalar Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel
+```
+
+### Outras Plataformas
+
+O projeto é compatível com:
+
+- Vercel
+- Netlify
+- Railway
+- Heroku
+- Docker
+
+## 🤝 Contribuição
+
+1. Fork o projeto
+2. Crie uma branch para sua feature
+3. Commit suas mudanças
+4. Push para a branch
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT.
+
+---
+
+**Hineni** - "Eis-me aqui" - Sistema de Repertório de Louvores 🎵
