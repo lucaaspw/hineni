@@ -291,20 +291,6 @@
 
   /* Dialog mobile improvements */
   @media (max-width: 768px) {
-    [data-slot="dialog-content"] {
-      margin: 1rem !important;
-      max-width: calc(100vw - 2rem) !important;
-      max-height: calc(100vh - 2rem) !important;
-      width: calc(100vw - 2rem) !important;
-      height: auto !important;
-      border-radius: 0.5rem !important;
-      top: 50% !important;
-      left: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      position: fixed !important;
-      overflow-y: auto !important;
-    }
-
     [data-slot="dialog-overlay"] {
       z-index: 9998 !important;
     }

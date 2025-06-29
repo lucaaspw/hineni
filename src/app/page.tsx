@@ -96,7 +96,7 @@ export default function Home() {
 
       {/* Repertoire Section */}
       <div className="container mx-auto px-4 py-8 sm:py-12">
-        <div className="grid gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 lg:gap-8">
           {repertoire.length > 0
             ? repertoire.map((item) => (
                 <Card
@@ -104,32 +104,29 @@ export default function Home() {
                   className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 bg-gradient-to-r from-card to-card/50 backdrop-blur-sm"
                 >
                   <CardHeader className="pb-3 sm:pb-4">
-                    <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-base sm:text-lg space-y-2 sm:space-y-0">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 text-primary font-semibold text-xs sm:text-sm">
-                          {item.position}
-                        </div>
-                        <span className="font-medium">
-                          Música {item.position}
-                        </span>
+                    <CardTitle className="flex items-start justify-between space-y-2 sm:space-y-0 sm:flex-row sm:items-center">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                          {item.music.title}
+                        </h3>
+                        {item.music.artist && (
+                          <p className="text-sm text-muted-foreground truncate mt-1">
+                            {item.music.artist}
+                          </p>
+                        )}
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 flex-shrink-0">
                         {item.music.isNewOfWeek && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
                             <Star className="w-3 h-3 mr-1" />
-                            Nova da Semana
-                          </span>
-                        )}
-                        {item.isManual && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                            Manual
+                            Nova
                           </span>
                         )}
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleViewMusic(item.music)}
-                          className="flex-shrink-0 h-8 px-3"
+                          className="h-8 px-3"
                         >
                           <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                           <span className="hidden sm:inline">Ver</span>
@@ -139,47 +136,35 @@ export default function Home() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-2">
-                      <h3 className="text-lg sm:text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {item.music.title}
-                      </h3>
-                      {item.music.artist && (
-                        <p className="text-muted-foreground font-medium text-sm sm:text-base">
-                          {item.music.artist}
-                        </p>
-                      )}
+                      <p className="text-sm text-muted-foreground line-clamp-3">
+                        {item.music.lyrics.split("\n").slice(0, 3).join("\n")}
+                        {item.music.lyrics.split("\n").length > 3 && "..."}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               ))
-            : // Placeholder para as 6 músicas do repertório quando vazio
-              Array.from({ length: 6 }, (_, i) => (
+            : Array.from({ length: 6 }, (_, i) => (
                 <Card
                   key={i}
                   className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 bg-gradient-to-r from-card to-card/50 backdrop-blur-sm opacity-60"
                 >
                   <CardHeader className="pb-3 sm:pb-4">
-                    <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-base sm:text-lg space-y-2 sm:space-y-0">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-muted text-muted-foreground font-semibold text-xs sm:text-sm">
-                          {i + 1}
-                        </div>
-                        <span className="font-medium">Música {i + 1}</span>
+                    <CardTitle className="flex items-start justify-between space-y-2 sm:space-y-0 sm:flex-row sm:items-center">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base sm:text-lg font-semibold text-muted-foreground truncate">
+                          Título da música será carregado aqui
+                        </h3>
+                        <p className="text-sm text-muted-foreground truncate mt-1">
+                          Artista
+                        </p>
                       </div>
-                      {i === 5 && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                          <Star className="w-3 h-3 mr-1" />
-                          Nova da Semana
-                        </span>
-                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-2">
-                      <h3 className="text-lg sm:text-xl font-semibold text-muted-foreground">
-                        Título da música será carregado aqui
-                      </h3>
-                      <p className="text-muted-foreground text-sm sm:text-base">
-                        Artista
+                      <p className="text-sm text-muted-foreground line-clamp-3">
+                        Letra da música será carregada aqui
                       </p>
                     </div>
                   </CardContent>

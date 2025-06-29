@@ -11,12 +11,6 @@ export const metadata: Metadata = {
   description: "Sistema de gerenciamento de repertório de músicas para igreja",
   keywords: ["igreja", "louvores", "músicas", "repertório", "adoracao"],
   authors: [{ name: "Hineni" }],
-  viewport:
-    "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-  ],
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -26,6 +20,17 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
 };
 
 export default function RootLayout({

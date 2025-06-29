@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
-
-const prisma = new PrismaClient();
+import { repertoireSchema } from "@/lib/validations";
 
 // Middleware para verificar autenticação
 async function verifyAuth(request: NextRequest) {
@@ -53,14 +52,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    const { positions } = await request.json();
+    const body = await request.json();
 
-    if (!positions || !Array.isArray(positions) || positions.length !== 6) {
+    // Validar dados com Zod
+    const validationResult = repertoireSchema.safeParse(body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { message: "É necessário fornecer 6 posições para o repertório" },
+        {
+          message: "Dados inválidos",
+          errors: validationResult.error.errors,
+        },
         { status: 400 }
       );
     }
+
+    const { positions } = validationResult.data;
 
     // Limpar repertório atual
     await prisma.weeklyRepertoire.deleteMany();

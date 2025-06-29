@@ -44,8 +44,8 @@ export function MusicViewer({ music, open, onOpenChange }: MusicViewerProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-4">
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] p-0 overflow-hidden">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 flex-shrink-0">
           <DialogTitle className="text-lg sm:text-xl font-bold text-foreground flex items-center space-x-2 pr-8">
             <Music className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             <span className="truncate">{music.title}</span>
@@ -57,7 +57,10 @@ export function MusicViewer({ music, open, onOpenChange }: MusicViewerProps) {
           )}
         </DialogHeader>
 
-        <div className="px-6 pb-6">
+        <div
+          className="px-4 sm:px-6 pb-4 sm:pb-6 overflow-y-auto"
+          style={{ maxHeight: "calc(95vh - 120px)" }}
+        >
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
@@ -82,7 +85,7 @@ export function MusicViewer({ music, open, onOpenChange }: MusicViewerProps) {
             </TabsList>
 
             <TabsContent value="lyrics" className="space-y-0">
-              <div className="bg-muted/30 rounded-lg p-4 sm:p-6 max-h-[60vh] overflow-y-auto">
+              <div className="bg-muted/30 rounded-lg p-3 sm:p-4 lg:p-6">
                 <pre className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed font-sans text-foreground">
                   {music.lyrics}
                 </pre>
@@ -91,7 +94,7 @@ export function MusicViewer({ music, open, onOpenChange }: MusicViewerProps) {
 
             <TabsContent value="chords" className="space-y-0">
               {music.chords ? (
-                <div className="bg-muted/30 rounded-lg p-4 sm:p-6 max-h-[60vh] overflow-y-auto">
+                <div className="bg-muted/30 rounded-lg p-3 sm:p-4 lg:p-6">
                   <pre className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed font-mono text-foreground">
                     {music.chords}
                   </pre>

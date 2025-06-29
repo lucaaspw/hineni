@@ -1,63 +1,107 @@
 # Hineni - Sistema de Repertório de Louvores
 
-Sistema moderno para gerenciamento de repertório de músicas para igreja, desenvolvido com Next.js, TypeScript, Tailwind CSS e Prisma.
+Sistema moderno para gerenciamento de repertório de músicas para igreja, desenvolvido com Next.js 14, TypeScript, Prisma e Tailwind CSS.
 
-## 🚀 Funcionalidades
+## ✨ Funcionalidades
 
-- **Repertório Semanal**: Visualização das músicas da semana
-- **Biblioteca de Louvores**: Catálogo completo de músicas
-- **Área Administrativa**: Gerenciamento de músicas e repertório
-- **Design Responsivo**: Otimizado para mobile e desktop
-- **Tema Claro/Escuro**: Suporte a múltiplos temas
-- **PWA**: Instalável como app no celular
+- 🎵 **Biblioteca de Músicas**: Cadastro e visualização de letras e cifras
+- 📅 **Repertório Semanal**: Gerenciamento de 6 músicas por semana
+- 🔐 **Área Administrativa**: Login seguro para administradores
+- 📱 **PWA Ready**: Funciona offline e pode ser instalado como app
+- 🌙 **Tema Escuro/Claro**: Interface adaptável às preferências do usuário
+- 🔍 **Busca Inteligente**: Filtro por título e artista
+- 📊 **Visualização Completa**: Letras e cifras em abas separadas
 
-## 🛠️ Tecnologias
+## 🚀 Tecnologias
 
-- **Next.js 14** com Turbopack
-- **TypeScript**
-- **Tailwind CSS**
-- **Prisma** (PostgreSQL)
-- **Radix UI**
-- **Next Themes**
-- **JWT** para autenticação
+- **Frontend**: Next.js 14, React 18, TypeScript
+- **Styling**: Tailwind CSS, Radix UI
+- **Database**: PostgreSQL com Prisma ORM
+- **Autenticação**: JWT
+- **Validação**: Zod
+- **Deploy**: Vercel (recomendado)
 
-## 📦 Instalação
+## 📋 Pré-requisitos
+
+- Node.js 18+
+- PostgreSQL
+- npm ou yarn
+
+## 🛠️ Instalação
+
+1. **Clone o repositório**
 
 ```bash
-# Instalar dependências
+git clone <url-do-repositorio>
+cd hineni
+```
+
+2. **Instale as dependências**
+
+```bash
 npm install
-
-# Configurar banco de dados
-npm run db:push
-
-# Inserir dados de exemplo
-npm run db:seed
-
-# Iniciar desenvolvimento
-npm run dev
 ```
 
-## 🔐 Credenciais de Acesso
-
-- **Usuário:** `hineni`
-- **Senha:** `hineni25`
-
-## 🎯 Scripts Disponíveis
+3. **Configure as variáveis de ambiente**
 
 ```bash
-# Desenvolvimento com Turbopack
-npm run dev
+cp env.example .env.local
+```
 
-# Build para produção
-npm run build
+Edite o arquivo `.env.local` com suas configurações:
 
-# Iniciar produção
-npm run start
+```env
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/hineni"
 
-# Banco de dados
-npm run db:push
+# JWT
+JWT_SECRET="sua-chave-secreta-aqui"
+
+# Admin Credentials
+ADMIN_USERNAME="hineni"
+ADMIN_PASSWORD="hineni25"
+```
+
+4. **Configure o banco de dados**
+
+```bash
+# Gere o cliente Prisma
+npx prisma generate
+
+# Execute as migrações
+npx prisma db push
+
+# (Opcional) Popule com dados de exemplo
 npm run db:seed
 ```
+
+5. **Execute o projeto**
+
+```bash
+npm run dev
+```
+
+Acesse [http://localhost:3000](http://localhost:3000)
+
+## 📱 Configuração PWA
+
+Para que o PWA funcione corretamente, você precisa:
+
+1. **Criar os ícones PWA**:
+
+   - Substitua `public/icon-192.png` por uma imagem 192x192px
+   - Substitua `public/icon-512.png` por uma imagem 512x512px
+
+2. **Configurar HTTPS** (em produção):
+   - O PWA requer HTTPS para funcionar
+   - Vercel fornece HTTPS automaticamente
+
+## 🔐 Credenciais Padrão
+
+- **Usuário**: `hineni`
+- **Senha**: `hineni25`
+
+⚠️ **Importante**: Altere essas credenciais em produção!
 
 ## 📁 Estrutura do Projeto
 
@@ -65,85 +109,54 @@ npm run db:seed
 hineni/
 ├── src/
 │   ├── app/                 # App Router (Next.js 14)
+│   │   ├── api/            # API Routes
 │   │   ├── admin/          # Área administrativa
-│   │   ├── api/            # Rotas da API
 │   │   ├── louvores/       # Biblioteca de músicas
 │   │   └── login/          # Página de login
 │   ├── components/         # Componentes React
-│   │   ├── ui/            # Componentes base
-│   │   └── ...            # Componentes específicos
+│   │   └── ui/            # Componentes UI (shadcn/ui)
 │   └── lib/               # Utilitários e configurações
-├── prisma/                # Schema e migrations
-├── public/                # Arquivos estáticos
-└── scripts/               # Scripts auxiliares
+├── prisma/                # Schema e migrações do banco
+├── public/               # Arquivos estáticos
+└── scripts/              # Scripts utilitários
 ```
 
-## 🌟 Recursos Mobile
-
-- **Design Mobile-First**: Interface otimizada para telas pequenas
-- **Touch-Friendly**: Botões e elementos adequados para toque
-- **PWA Ready**: Instalável como app no celular
-- **Performance**: Turbopack para desenvolvimento rápido
-- **Responsivo**: Adapta-se a qualquer tamanho de tela
-
-## 🔧 Configurações
-
-### Variáveis de Ambiente
-
-Crie um arquivo `.env.local`:
-
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/hineni"
-JWT_SECRET="seu-secret-jwt-aqui"
-```
-
-### Banco de Dados
-
-O projeto usa PostgreSQL com Prisma. Para configurar:
+## 🎯 Scripts Disponíveis
 
 ```bash
-# Instalar PostgreSQL
-# Configurar DATABASE_URL no .env.local
-npm run db:push
-npm run db:seed
+npm run dev          # Desenvolvimento
+npm run build        # Build de produção
+npm run start        # Servidor de produção
+npm run lint         # Verificação de código
+npm run db:push      # Sincronizar banco
+npm run db:seed      # Popular banco com dados
 ```
 
-## 📱 PWA Features
+## 🔧 Melhorias Implementadas
 
-- **Instalável**: Adicionar à tela inicial
-- **Offline**: Cache de recursos estáticos
-- **App-like**: Experiência similar a app nativo
-- **Notificações**: Suporte a push notifications (futuro)
-
-## 🎨 Temas
-
-O sistema suporta:
-
-- **Tema Claro**: Para ambientes bem iluminados
-- **Tema Escuro**: Para ambientes com pouca luz
-- **Tema Automático**: Segue preferência do sistema
+- ✅ **Instância única do PrismaClient** para melhor performance
+- ✅ **Validação com Zod** para dados mais seguros
+- ✅ **Configuração centralizada** de autenticação
+- ✅ **Tratamento de erros** melhorado
+- ✅ **Variáveis de ambiente** organizadas
+- ✅ **Documentação** completa
 
 ## 🚀 Deploy
 
 ### Vercel (Recomendado)
 
-```bash
-# Instalar Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-```
+1. Conecte seu repositório ao Vercel
+2. Configure as variáveis de ambiente
+3. Deploy automático a cada push
 
 ### Outras Plataformas
 
-O projeto é compatível com:
+O projeto é compatível com qualquer plataforma que suporte Next.js:
 
-- Vercel
 - Netlify
 - Railway
-- Heroku
-- Docker
+- DigitalOcean App Platform
+- AWS Amplify
 
 ## 🤝 Contribuição
 
@@ -155,7 +168,11 @@ O projeto é compatível com:
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT.
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+
+## 🆘 Suporte
+
+Se encontrar algum problema ou tiver dúvidas, abra uma issue no repositório.
 
 ---
 

@@ -1,21 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+import { AUTH_CONFIG, verifyCredentials } from "@/lib/auth";
+import { loginSchema } from "@/lib/validations";
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json();
+    const body = await request.json();
 
-    // Credenciais fixas conforme especificado
-    const validUsername = "hineni";
-    const validPassword = "hineni25";
+    // Validar dados com Zod
+    const validationResult = loginSchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          message: "Dados inválidos",
+          errors: validationResult.error.errors,
+        },
+        { status: 400 }
+      );
+    }
 
-    if (username === validUsername && password === validPassword) {
+    const { username, password } = validationResult.data;
+
+    if (verifyCredentials(username, password)) {
       // Gerar token JWT
-      const token = jwt.sign({ username, role: "admin" }, JWT_SECRET, {
-        expiresIn: "24h",
-      });
+      const token = jwt.sign(
+        { username, role: "admin" },
+        AUTH_CONFIG.jwtSecret,
+        {
+          expiresIn: AUTH_CONFIG.tokenExpiry,
+        }
+      );
 
       const response = NextResponse.json(
         { message: "Login realizado com sucesso" },

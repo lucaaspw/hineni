@@ -108,7 +108,7 @@ export default function LouvoresPage() {
       {/* Musics Grid */}
       <div className="container mx-auto px-4 pb-8 sm:pb-12">
         {filteredMusics.length > 0 ? (
-          <div className="grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {filteredMusics.map((music) => (
               <Card
                 key={music.id}

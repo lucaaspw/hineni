@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
-
-const prisma = new PrismaClient();
+import { musicSchema } from "@/lib/validations";
 
 // Middleware para verificar autenticação
 async function verifyAuth(request: NextRequest) {
@@ -48,15 +47,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    const { title, artist, lyrics, chords, isNewOfWeek } = await request.json();
+    const body = await request.json();
 
-    // Validar campos obrigatórios
-    if (!title || !lyrics) {
+    // Validar dados com Zod
+    const validationResult = musicSchema.safeParse(body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { message: "Título e letra são obrigatórios" },
+        {
+          message: "Dados inválidos",
+          errors: validationResult.error.errors,
+        },
         { status: 400 }
       );
     }
+
+    const { title, artist, lyrics, chords, isNewOfWeek } =
+      validationResult.data;
 
     // Se for música nova da semana, verificar se já existe uma
     if (isNewOfWeek) {
