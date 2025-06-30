@@ -148,6 +148,107 @@
     background-image: linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
       linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
   }
+
+  /* Otimizações de animação */
+  .animate-optimized {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+
+  /* Otimizações de scroll */
+  .scroll-optimized {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Otimizações de renderização */
+  .render-optimized {
+    contain: layout style paint;
+  }
+
+  /* Otimizações de fonte */
+  .font-optimized {
+    font-display: swap;
+    font-feature-settings: "liga" 1, "kern" 1;
+  }
+
+  /* Classes específicas para música nova da semana - compatibilidade móvel */
+  .new-week-music-card {
+    border: 2px solid #86efac !important; /* green-300 */
+    background-color: #f0fdf4 !important; /* green-50 */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  }
+
+  .dark .new-week-music-card {
+    border-color: #15803d !important; /* green-700 */
+    background-color: rgba(20, 83, 45, 0.2) !important; /* green-950/20 */
+  }
+
+  .new-week-music-badge {
+    background-color: #22c55e !important; /* green-500 */
+    color: white !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+  }
+
+  .new-week-music-icon {
+    background-color: #22c55e !important; /* green-500 */
+    color: white !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  }
+
+  .new-week-music-title {
+    color: #166534 !important; /* green-800 */
+  }
+
+  .dark .new-week-music-title {
+    color: #bbf7d0 !important; /* green-200 */
+  }
+
+  .new-week-music-indicator {
+    background-color: #dcfce7 !important; /* green-100 */
+    border: 1px solid #86efac !important; /* green-300 */
+    color: #166534 !important; /* green-800 */
+  }
+
+  .dark .new-week-music-indicator {
+    background-color: rgba(20, 83, 45, 0.4) !important; /* green-950/40 */
+    border-color: #15803d !important; /* green-700 */
+    color: #bbf7d0 !important; /* green-200 */
+  }
+
+  /* Força aplicação em dispositivos móveis */
+  @media (max-width: 768px) {
+    .new-week-music-card {
+      border: 2px solid #86efac !important;
+      background-color: #f0fdf4 !important;
+    }
+
+    .dark .new-week-music-card {
+      border-color: #15803d !important;
+      background-color: rgba(20, 83, 45, 0.2) !important;
+    }
+
+    .new-week-music-badge {
+      background-color: #22c55e !important;
+      color: white !important;
+    }
+
+    .new-week-music-icon {
+      background-color: #22c55e !important;
+      color: white !important;
+    }
+
+    .new-week-music-title {
+      color: #166534 !important;
+    }
+
+    .dark .new-week-music-title {
+      color: #bbf7d0 !important;
+    }
+  }
 }
 
 @tailwind utilities;
@@ -270,6 +371,16 @@
     .hide-scrollbar::-webkit-scrollbar {
       display: none;
     }
+
+    /* Reduzir animações em dispositivos móveis para melhor performance */
+    .animate-optimized {
+      will-change: auto;
+    }
+
+    /* Otimizar scroll em mobile */
+    .scroll-optimized {
+      -webkit-overflow-scrolling: touch;
+    }
   }
 
   /* Prevent horizontal scroll on mobile */
@@ -355,4 +466,80 @@
 /* Grid pattern background */
 .bg-grid-white {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgb(148 163 184 / 0.1)'%3e%3cpath d='m0 .5h32m-32 0v32'/%3e%3c/svg%3e");
+}
+
+/* Safari-specific improvements */
+@supports (-webkit-touch-callout: none) {
+  /* Safari viewport units fix */
+  .h-screen {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+
+  .min-h-screen {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
+  /* Safari dialog improvements */
+  [data-slot="dialog-content"] {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  /* Safari scroll improvements */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Safari backdrop filter fallback */
+  @supports not (backdrop-filter: blur(4px)) {
+    [data-slot="dialog-overlay"] {
+      background-color: rgba(0, 0, 0, 0.7);
+    }
+  }
+
+  /* Otimizações específicas para Safari */
+  .animate-optimized {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+
+  /* Melhor performance de scroll no Safari */
+  .scroll-optimized {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Mobile Safari improvements */
+@media screen and (max-width: 768px) {
+  [data-slot="dialog-content"] {
+    margin: 0;
+    max-height: 100vh;
+    max-width: 100vw;
+    border-radius: 0;
+    border: none;
+  }
+
+  /* Prevent body scroll on mobile Safari */
+  body.dialog-open {
+    position: fixed;
+    width: 100%;
+    overflow: hidden;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  [data-slot="dialog-content"] {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Melhor renderização de texto em telas de alta resolução */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
 }

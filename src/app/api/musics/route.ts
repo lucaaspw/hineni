@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
-import { musicSchema } from "@/lib/validations";
+import { musicSchema, musicEditSchema } from "@/lib/validations";
 
 // Middleware para verificar autenticação
 async function verifyAuth(request: NextRequest) {
@@ -64,6 +64,36 @@ export async function POST(request: NextRequest) {
     const { title, artist, lyrics, chords, isNewOfWeek } =
       validationResult.data;
 
+    // Verificar se já existe uma música com o mesmo título e artista
+    const existingMusic = await prisma.music.findFirst({
+      where: {
+        title: {
+          equals: title,
+          mode: "insensitive", // Case insensitive
+        },
+        artist: artist
+          ? {
+              equals: artist,
+              mode: "insensitive", // Case insensitive
+            }
+          : null,
+      },
+    });
+
+    if (existingMusic) {
+      return NextResponse.json(
+        {
+          message: "Já existe uma música com este título e artista",
+          existingMusic: {
+            id: existingMusic.id,
+            title: existingMusic.title,
+            artist: existingMusic.artist,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     // Se for música nova da semana, verificar se já existe uma
     if (isNewOfWeek) {
       const existingNewOfWeek = await prisma.music.findFirst({
@@ -106,22 +136,60 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    const { id, title, artist, lyrics, chords, isNewOfWeek } =
-      await request.json();
+    const body = await request.json();
 
-    if (!id) {
+    // Validar dados com Zod
+    const validationResult = musicEditSchema.safeParse(body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { message: "ID da música é obrigatório" },
+        {
+          message: "Dados inválidos",
+          errors: validationResult.error.errors,
+        },
         { status: 400 }
       );
     }
 
-    // Se for música nova da semana, verificar se já existe outra
+    const { id, title, artist, lyrics, chords, isNewOfWeek } =
+      validationResult.data;
+
+    // Verificar se já existe uma música com o mesmo título e artista (excluindo a atual)
+    const existingMusic = await prisma.music.findFirst({
+      where: {
+        id: { not: id }, // Excluir a música atual
+        title: {
+          equals: title,
+          mode: "insensitive", // Case insensitive
+        },
+        artist: artist
+          ? {
+              equals: artist,
+              mode: "insensitive", // Case insensitive
+            }
+          : null,
+      },
+    });
+
+    if (existingMusic) {
+      return NextResponse.json(
+        {
+          message: "Já existe uma música com este título e artista",
+          existingMusic: {
+            id: existingMusic.id,
+            title: existingMusic.title,
+            artist: existingMusic.artist,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    // Se for música nova da semana, verificar se já existe uma (excluindo a atual)
     if (isNewOfWeek) {
       const existingNewOfWeek = await prisma.music.findFirst({
         where: {
           isNewOfWeek: true,
-          id: { not: id },
+          id: { not: id }, // Excluir a música atual
         },
       });
 

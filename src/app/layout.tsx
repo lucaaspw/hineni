@@ -4,7 +4,13 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Header } from "@/components/header";
 
-const inter = Inter({ subsets: ["latin"] });
+// Otimização da fonte Inter
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  preload: true,
+  fallback: ["system-ui", "arial"],
+});
 
 export const metadata: Metadata = {
   title: "Hineni - Repertório de Louvores",
@@ -19,6 +25,10 @@ export const metadata: Metadata = {
   },
   formatDetection: {
     telephone: false,
+  },
+  // Otimizações de performance
+  other: {
+    "theme-color": "#000000",
   },
 };
 
@@ -41,6 +51,15 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        {/* Preload de recursos críticos */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+
+        {/* Meta tags para PWA */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -48,6 +67,10 @@ export default function RootLayout({
         <meta name="application-name" content="Hineni" />
         <meta name="msapplication-TileColor" content="#000000" />
         <meta name="msapplication-tap-highlight" content="no" />
+
+        {/* DNS prefetch para APIs */}
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="//fonts.gstatic.com" />
       </head>
       <body className={inter.className}>
         <ThemeProvider defaultTheme="system" storageKey="hineni-theme">

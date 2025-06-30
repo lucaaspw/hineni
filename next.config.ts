@@ -1,26 +1,28 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    rules: {
-      "*.svg": {
-        loaders: ["@svgr/webpack"],
-        as: "*.js",
-      },
-    },
+  // Otimizações de performance
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: [
+      "lucide-react",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-tabs",
+    ],
   },
-  // Configurações para desenvolvimento mobile
-  webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      // Otimizações para desenvolvimento
-      config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
-      };
-    }
-    return config;
+
+  // Compressão e otimizações
+  compress: true,
+  poweredByHeader: false,
+
+  // Otimizações de imagens
+  images: {
+    domains: [],
+    formats: ["image/webp", "image/avif"],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 dias
   },
-  // Headers para melhor performance mobile
+
+  // Headers para cache e performance
   async headers() {
     return [
       {
@@ -38,19 +40,63 @@ const nextConfig: NextConfig = {
             key: "Referrer-Policy",
             value: "origin-when-cross-origin",
           },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/api/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=300, s-maxage=600",
+          },
         ],
       },
     ];
   },
-  // Configurações de imagens
-  images: {
-    domains: [],
-    formats: ["image/webp", "image/avif"],
+
+  // Otimizações do webpack
+  webpack: (config, { dev, isServer }) => {
+    // Otimizações para produção
+    if (!dev) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: "all",
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: "vendors",
+              chunks: "all",
+            },
+          },
+        },
+      };
+    }
+
+    // Otimizações para desenvolvimento
+    if (dev && !isServer) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+
+    return config;
   },
-  // Compressão
-  compress: true,
-  // Powered by header
-  poweredByHeader: false,
+
+  // Configurações de PWA
+  async rewrites() {
+    return [
+      {
+        source: "/sw.js",
+        destination: "/_next/static/sw.js",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Music, FileText, Guitar } from "lucide-react";
+import { disableBodyScroll, enableBodyScroll } from "@/lib/utils";
 
 interface Music {
   id: string;
@@ -29,14 +30,18 @@ export function MusicViewer({ music, open, onOpenChange }: MusicViewerProps) {
   const [activeTab, setActiveTab] = useState("lyrics");
 
   useEffect(() => {
+    let scrollY: number | undefined;
+
     if (open) {
-      document.body.style.overflow = "hidden";
+      scrollY = disableBodyScroll();
     } else {
-      document.body.style.overflow = "unset";
+      enableBodyScroll(scrollY);
     }
 
     return () => {
-      document.body.style.overflow = "unset";
+      if (open) {
+        enableBodyScroll(scrollY);
+      }
     };
   }, [open]);
 
@@ -44,49 +49,52 @@ export function MusicViewer({ music, open, onOpenChange }: MusicViewerProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] p-0 overflow-hidden">
-        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 flex-shrink-0">
-          <DialogTitle className="text-lg sm:text-xl font-bold text-foreground flex items-center space-x-2 pr-8">
-            <Music className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+      <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl sm:max-h-[calc(100vh-4rem)] p-0 overflow-hidden animate-optimized">
+        <DialogHeader className="px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6 pb-2 sm:pb-3 md:pb-4 flex-shrink-0">
+          <DialogTitle className="text-base sm:text-lg md:text-xl font-bold text-foreground flex items-center space-x-2 pr-6 sm:pr-8 font-optimized">
+            <Music className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-primary" />
             <span className="truncate">{music.title}</span>
           </DialogTitle>
           {music.artist && (
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1 font-optimized">
               {music.artist}
             </p>
           )}
         </DialogHeader>
 
         <div
-          className="px-4 sm:px-6 pb-4 sm:pb-6 overflow-y-auto"
-          style={{ maxHeight: "calc(95vh - 120px)" }}
+          className="px-3 sm:px-4 md:px-6 pb-6 sm:pb-4 md:pb-6 overflow-y-auto flex-1 scroll-optimized"
+          style={{
+            maxHeight: "calc(100vh - 120px)",
+            height: "calc(100vh - 120px)",
+          }}
         >
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className="space-y-4"
+            className="space-y-3 sm:space-y-4"
           >
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-2 animate-optimized">
               <TabsTrigger
                 value="lyrics"
-                className="flex items-center space-x-2 text-sm sm:text-base"
+                className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm md:text-base"
               >
-                <FileText className="w-4 h-4" />
+                <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>Letra</span>
               </TabsTrigger>
               <TabsTrigger
                 value="chords"
-                className="flex items-center space-x-2 text-sm sm:text-base"
+                className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm md:text-base"
                 disabled={!music.chords}
               >
-                <Guitar className="w-4 h-4" />
+                <Guitar className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>Cifra</span>
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="lyrics" className="space-y-0">
-              <div className="bg-muted/30 rounded-lg p-3 sm:p-4 lg:p-6">
-                <pre className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed font-sans text-foreground">
+              <div className="bg-muted/30 rounded-lg py-5 px-2 sm:p-3 md:p-4 lg:p-6 render-optimized">
+                <pre className="whitespace-pre-wrap text-xs sm:text-sm md:text-base leading-relaxed font-sans text-foreground font-optimized">
                   {music.lyrics}
                 </pre>
               </div>
@@ -94,20 +102,20 @@ export function MusicViewer({ music, open, onOpenChange }: MusicViewerProps) {
 
             <TabsContent value="chords" className="space-y-0">
               {music.chords ? (
-                <div className="bg-muted/30 rounded-lg p-3 sm:p-4 lg:p-6">
-                  <pre className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed font-mono text-foreground">
+                <div className="bg-muted/30 rounded-lg py-5 px-2 sm:p-3 md:p-4 lg:p-6 render-optimized">
+                  <pre className="whitespace-pre-wrap text-xs sm:text-sm md:text-base leading-relaxed font-mono text-foreground font-optimized">
                     {music.chords}
                   </pre>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-32 text-center">
-                  <div className="space-y-4">
-                    <Guitar className="w-12 h-12 text-muted-foreground mx-auto" />
+                <div className="flex items-center justify-center h-24 sm:h-32 text-center">
+                  <div className="space-y-2 sm:space-y-4">
+                    <Guitar className="w-8 h-8 sm:w-12 sm:h-12 text-muted-foreground mx-auto" />
                     <div>
-                      <h3 className="text-lg font-semibold mb-2">
+                      <h3 className="text-sm sm:text-lg font-semibold mb-1 sm:mb-2 font-optimized">
                         Cifra não disponível
                       </h3>
-                      <p className="text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground font-optimized">
                         Esta música ainda não possui cifra cadastrada.
                       </p>
                     </div>

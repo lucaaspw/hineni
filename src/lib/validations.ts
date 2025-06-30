@@ -1,7 +1,20 @@
 import { z } from "zod";
 
-// Schema para validação de música
+// Schema para validação de música (criação)
 export const musicSchema = z.object({
+  title: z
+    .string()
+    .min(1, "Título é obrigatório")
+    .max(200, "Título muito longo"),
+  artist: z.string().optional(),
+  lyrics: z.string().min(1, "Letra é obrigatória"),
+  chords: z.string().optional(),
+  isNewOfWeek: z.boolean().default(false),
+});
+
+// Schema para validação de música (edição - inclui id)
+export const musicEditSchema = z.object({
+  id: z.string().min(1, "ID é obrigatório"),
   title: z
     .string()
     .min(1, "Título é obrigatório")
@@ -25,5 +38,6 @@ export const repertoireSchema = z.object({
 
 // Tipos derivados dos schemas
 export type MusicInput = z.infer<typeof musicSchema>;
+export type MusicEditInput = z.infer<typeof musicEditSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RepertoireInput = z.infer<typeof repertoireSchema>;
