@@ -63,7 +63,7 @@ export function MusicViewer({ music, open, onOpenChange }: MusicViewerProps) {
         </DialogHeader>
 
         <div
-          className="px-3 sm:px-4 md:px-6 pb-6 sm:pb-4 md:pb-6 overflow-y-auto flex-1 scroll-optimized"
+          className="px-3 sm:py-3 sm:px-4 md:px-6 pb-6 sm:pb-4 md:pb-6 overflow-y-auto flex-1 scroll-optimized"
           style={{
             maxHeight: "calc(100vh - 120px)",
             height: "calc(100vh - 120px)",

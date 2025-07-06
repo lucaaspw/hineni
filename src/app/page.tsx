@@ -75,9 +75,8 @@ const MusicCard = ({
           </div>
           <div className="flex items-center space-x-2 flex-shrink-0">
             {item.music.isNewOfWeek && (
-              <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold new-week-music-badge">
-                <Star className="w-4 h-4 mr-1.5" />
-                Nova da Semana
+              <span className="inline-flex items-center h-6 w-6 justify-center rounded-full text-sm font-semibold new-week-music-badge">
+                <Star className="w-4 h-4" />
               </span>
             )}
             <Button
@@ -180,10 +179,7 @@ export default function Home() {
               <Music className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight px-2">
-              Repertório da{" "}
-              <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Semana
-              </span>
+              Repertório da Semana
             </h1>
             <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
               Músicas selecionadas com carinho para esta semana de louvor
@@ -206,7 +202,7 @@ export default function Home() {
       {/* Repertoire Section */}
       <div className="container mx-auto px-4 py-8 sm:py-12">
         {/* Todas as Músicas */}
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3 lg:gap-8">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2  lg:grid-cols-3 lg:gap-8">
           {repertoire.length > 0
             ? repertoire.map((item) => (
                 <MusicCard

@@ -514,7 +514,7 @@ export default function AdminPage() {
               </Dialog>
             </div>
 
-            <div className="grid gap-3 sm:gap-4">
+            <div className="grid gap-3  sm:gap-4">
               {musics.map((music) => (
                 <Card
                   key={music.id}
