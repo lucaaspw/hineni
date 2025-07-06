@@ -5,11 +5,12 @@
   "scripts": {
     "dev": "next dev --turbo",
     "dev:turbo": "next dev --turbo",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
@@ -49,5 +50,8 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "tsx scripts/seed.ts"
   }
 }
