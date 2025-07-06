@@ -49,7 +49,7 @@ export function MusicViewer({ music, open, onOpenChange }: MusicViewerProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl sm:max-h-[calc(100vh-4rem)] p-0 overflow-hidden animate-optimized">
+      <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl sm:max-h-[calc(100vh-2rem)] p-0 overflow-hidden animate-optimized">
         <DialogHeader className="px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6 pb-2 sm:pb-3 md:pb-4 flex-shrink-0">
           <DialogTitle className="text-base sm:text-lg md:text-xl font-bold text-foreground flex items-center space-x-2 pr-6 sm:pr-8 font-optimized">
             <Music className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-primary" />
