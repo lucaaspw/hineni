@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Header } from "@/components/header";
+import { Toaster } from "sonner";
 
 // Otimização da fonte Inter
 const inter = Inter({
@@ -79,6 +80,7 @@ export default function RootLayout({
             <main>{children}</main>
           </div>
         </ThemeProvider>
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   );

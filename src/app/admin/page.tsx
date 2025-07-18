@@ -27,6 +27,7 @@ import {
   Edit,
 } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
+import { toast } from "sonner";
 
 interface Music {
   id: string;
@@ -150,6 +151,11 @@ export default function AdminPage() {
           duplicate.artist || "Artista não informado"
         }`
       );
+      toast.error(
+        `Música duplicada: "${duplicate.title}" por ${
+          duplicate.artist || "Artista não informado"
+        }`
+      );
       setFormLoading(false);
       return;
     }
@@ -159,6 +165,9 @@ export default function AdminPage() {
       const existingNewOfWeek = musics.find((music) => music.isNewOfWeek);
       if (existingNewOfWeek) {
         setErrorMessage(
+          `Já existe uma música nova da semana: "${existingNewOfWeek.title}"`
+        );
+        toast.error(
           `Já existe uma música nova da semana: "${existingNewOfWeek.title}"`
         );
         setFormLoading(false);
@@ -185,6 +194,7 @@ export default function AdminPage() {
         });
         setShowAddForm(false);
         fetchData();
+        toast.success("Música adicionada com sucesso!");
       } else {
         const errorData = await response.json();
         if (response.status === 409) {
@@ -193,13 +203,20 @@ export default function AdminPage() {
               errorData.existingMusic.artist || "Artista não informado"
             }`
           );
+          toast.error(
+            `Música duplicada: "${errorData.existingMusic.title}" por ${
+              errorData.existingMusic.artist || "Artista não informado"
+            }`
+          );
         } else {
           setErrorMessage(errorData.message || "Erro ao adicionar música");
+          toast.error(errorData.message || "Erro ao adicionar música");
         }
       }
     } catch (error) {
       console.error("Erro ao adicionar música:", error);
       setErrorMessage("Erro de conexão. Tente novamente.");
+      toast.error("Erro de conexão. Tente novamente.");
     } finally {
       setFormLoading(false);
     }
@@ -226,27 +243,34 @@ export default function AdminPage() {
         });
         setShowRepertoireForm(false);
         fetchData();
+        toast.success("Música adicionada ao repertório!");
+      } else {
+        toast.error("Erro ao adicionar ao repertório");
       }
     } catch (error) {
       console.error("Erro ao adicionar ao repertório:", error);
+      toast.error("Erro ao adicionar ao repertório");
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleDeleteMusic = async (musicId: string) => {
+  const handleDeleteMusic = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir esta música?")) return;
 
     try {
-      const response = await fetch(`/api/musics?id=${musicId}`, {
+      const response = await fetch(`/api/musics?id=${id}`, {
         method: "DELETE",
       });
-
       if (response.ok) {
         fetchData();
+        toast.success("Música removida com sucesso!");
+      } else {
+        toast.error("Erro ao remover música");
       }
     } catch (error) {
-      console.error("Erro ao excluir música:", error);
+      console.error("Erro ao remover música:", error);
+      toast.error("Erro ao remover música");
     }
   };
 
@@ -279,17 +303,25 @@ export default function AdminPage() {
           duplicate.artist || "Artista não informado"
         }`
       );
+      toast.error(
+        `Música duplicada: "${duplicate.title}" por ${
+          duplicate.artist || "Artista não informado"
+        }`
+      );
       setFormLoading(false);
       return;
     }
 
-    // Verificar se já existe música nova da semana (excluindo a atual)
+    // Verificar se já existe música nova da semana
     if (editFormData.isNewOfWeek) {
       const existingNewOfWeek = musics.find(
         (music) => music.isNewOfWeek && music.id !== editFormData.id
       );
       if (existingNewOfWeek) {
         setErrorMessage(
+          `Já existe uma música nova da semana: "${existingNewOfWeek.title}"`
+        );
+        toast.error(
           `Já existe uma música nova da semana: "${existingNewOfWeek.title}"`
         );
         setFormLoading(false);
@@ -317,6 +349,7 @@ export default function AdminPage() {
         });
         setShowEditForm(false);
         fetchData();
+        toast.success("Música editada com sucesso!");
       } else {
         const errorData = await response.json();
         if (response.status === 409) {
@@ -325,13 +358,20 @@ export default function AdminPage() {
               errorData.existingMusic.artist || "Artista não informado"
             }`
           );
+          toast.error(
+            `Música duplicada: "${errorData.existingMusic.title}" por ${
+              errorData.existingMusic.artist || "Artista não informado"
+            }`
+          );
         } else {
           setErrorMessage(errorData.message || "Erro ao editar música");
+          toast.error(errorData.message || "Erro ao editar música");
         }
       }
     } catch (error) {
       console.error("Erro ao editar música:", error);
       setErrorMessage("Erro de conexão. Tente novamente.");
+      toast.error("Erro de conexão. Tente novamente.");
     } finally {
       setFormLoading(false);
     }

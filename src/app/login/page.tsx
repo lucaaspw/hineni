@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Music, LogIn, Eye, EyeOff, AlertCircle, User } from "lucide-react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -31,13 +32,16 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
+        toast.success("Login realizado com sucesso!");
         router.push("/admin");
       } else {
         const data = await response.json();
         setError(data.message || "Erro ao fazer login");
+        toast.error(data.message || "Erro ao fazer login");
       }
     } catch {
       setError("Erro de conexão. Tente novamente.");
+      toast.error("Erro de conexão. Tente novamente.");
     } finally {
       setLoading(false);
     }

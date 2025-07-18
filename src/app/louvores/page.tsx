@@ -212,10 +212,7 @@ export default function LouvoresPage() {
               <Music className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
-              Biblioteca de{" "}
-              <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Louvores
-              </span>
+              Biblioteca de Louvores
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
               Explore nossa coleção completa de músicas para adoração
