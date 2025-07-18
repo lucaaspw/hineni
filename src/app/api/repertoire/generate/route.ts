@@ -48,11 +48,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Adicionar músicas ao repertório
+    const weekStart = new Date();
     await prisma.weeklyRepertoire.createMany({
       data: availableMusics.map((music: { id: string }, index: number) => ({
         musicId: music.id,
         position: index + 1,
         isManual: false,
+        weekStart,
       })),
     });
 

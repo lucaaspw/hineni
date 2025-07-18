@@ -4,7 +4,6 @@ const nextConfig = {
   // Otimizações de performance
   reactStrictMode: true,
   experimental: {
-    optimizeCss: false, // ou simplesmente remova essa linha
     optimizePackageImports: [
       "lucide-react",
       "@radix-ui/react-dialog",
@@ -87,16 +86,6 @@ const nextConfig = {
     }
 
     return config;
-  },
-
-  // Configurações de PWA
-  async rewrites() {
-    return [
-      {
-        source: "/sw.js",
-        destination: "/_next/static/sw.js",
-      },
-    ];
   },
 };
 

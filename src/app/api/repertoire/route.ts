@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
         musicId,
         position,
         isManual,
+        weekStart: new Date(),
       },
       include: {
         music: true,

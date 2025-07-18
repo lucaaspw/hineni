@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Music, Home, Settings, LogIn, Menu } from "lucide-react";
-import { useState } from "react";
+import { useState, memo, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -14,32 +14,99 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+// Componente de navegação otimizado
+const NavigationItem = memo(
+  ({
+    item,
+    isActive,
+    onClick,
+  }: {
+    item: { name: string; href: string; icon: any };
+    isActive: boolean;
+    onClick?: () => void;
+  }) => {
+    const Icon = item.icon;
+
+    return (
+      <Link
+        href={item.href}
+        onClick={onClick}
+        className={`flex items-center space-x-1 transition-colors hover:text-foreground/80 ${
+          isActive ? "text-foreground" : "text-foreground/60"
+        }`}
+      >
+        <Icon className="h-4 w-4" />
+        <span>{item.name}</span>
+      </Link>
+    );
+  }
+);
+
+NavigationItem.displayName = "NavigationItem";
+
+// Componente de navegação mobile otimizado
+const MobileNavigationItem = memo(
+  ({
+    item,
+    isActive,
+    onClick,
+  }: {
+    item: { name: string; href: string; icon: any };
+    isActive: boolean;
+    onClick?: () => void;
+  }) => {
+    const Icon = item.icon;
+
+    return (
+      <Link
+        href={item.href}
+        onClick={onClick}
+        className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+          isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+        }`}
+      >
+        <Icon className="h-5 w-5" />
+        <span className="font-medium">{item.name}</span>
+      </Link>
+    );
+  }
+);
+
+MobileNavigationItem.displayName = "MobileNavigationItem";
+
 export function Header() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const navigation = [
-    {
-      name: "Início",
-      href: "/",
-      icon: Home,
-    },
-    {
-      name: "Louvores",
-      href: "/louvores",
-      icon: Music,
-    },
-    {
-      name: "Admin",
-      href: "/admin",
-      icon: Settings,
-    },
-    {
-      name: "Login",
-      href: "/login",
-      icon: LogIn,
-    },
-  ];
+  const navigation = useMemo(
+    () => [
+      {
+        name: "Início",
+        href: "/",
+        icon: Home,
+      },
+      {
+        name: "Louvores",
+        href: "/louvores",
+        icon: Music,
+      },
+      {
+        name: "Admin",
+        href: "/admin",
+        icon: Settings,
+      },
+      {
+        name: "Login",
+        href: "/login",
+        icon: LogIn,
+      },
+    ],
+    []
+  );
+
+  const handleMenuClose = () => {
+    setIsMenuOpen(false);
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -54,23 +121,13 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center space-x-1 transition-colors hover:text-foreground/80 ${
-                  isActive ? "text-foreground" : "text-foreground/60"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{item.name}</span>
-              </Link>
-            );
-          })}
+          {navigation.map((item) => (
+            <NavigationItem
+              key={item.name}
+              item={item}
+              isActive={pathname === item.href}
+            />
+          ))}
         </nav>
 
         {/* Right side - Theme Toggle and Mobile Menu */}
@@ -92,26 +149,14 @@ export function Header() {
                 </SheetTitle>
               </SheetHeader>
               <nav className="mt-6 space-y-2">
-                {navigation.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href;
-
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setIsMenuOpen(false)}
-                      className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-muted"
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span className="font-medium">{item.name}</span>
-                    </Link>
-                  );
-                })}
+                {navigation.map((item) => (
+                  <MobileNavigationItem
+                    key={item.name}
+                    item={item}
+                    isActive={pathname === item.href}
+                    onClick={handleMenuClose}
+                  />
+                ))}
               </nav>
             </SheetContent>
           </Sheet>

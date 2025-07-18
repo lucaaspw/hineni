@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { musicSchema, musicEditSchema } from "@/lib/validations";
 
+// Cache em memória para músicas (5 minutos)
+let musicsCache: unknown[] | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 // Middleware para verificar autenticação
 async function verifyAuth(request: NextRequest) {
   const token = request.cookies.get("auth-token")?.value;
@@ -25,11 +30,32 @@ async function verifyAuth(request: NextRequest) {
 // GET - Listar todas as músicas
 export async function GET() {
   try {
+    const now = Date.now();
+
+    // Verificar cache
+    if (musicsCache && now - cacheTimestamp < CACHE_DURATION) {
+      return NextResponse.json(musicsCache, {
+        headers: {
+          "Cache-Control": "public, max-age=300, s-maxage=600",
+          "X-Cache": "HIT",
+        },
+      });
+    }
+
     const musics = await prisma.music.findMany({
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(musics);
+    // Atualizar cache
+    musicsCache = musics;
+    cacheTimestamp = now;
+
+    return NextResponse.json(musics, {
+      headers: {
+        "Cache-Control": "public, max-age=300, s-maxage=600",
+        "X-Cache": "MISS",
+      },
+    });
   } catch (error) {
     console.error("Erro ao buscar músicas:", error);
     return NextResponse.json(
@@ -117,6 +143,9 @@ export async function POST(request: NextRequest) {
         isNewOfWeek,
       },
     });
+
+    // Invalidar cache
+    musicsCache = null;
 
     return NextResponse.json(music, { status: 201 });
   } catch (error) {
@@ -212,6 +241,9 @@ export async function PUT(request: NextRequest) {
       },
     });
 
+    // Invalidar cache
+    musicsCache = null;
+
     return NextResponse.json(music);
   } catch (error) {
     console.error("Erro ao atualizar música:", error);
@@ -243,6 +275,9 @@ export async function DELETE(request: NextRequest) {
     await prisma.music.delete({
       where: { id },
     });
+
+    // Invalidar cache
+    musicsCache = null;
 
     return NextResponse.json({ message: "Música removida com sucesso" });
   } catch (error) {

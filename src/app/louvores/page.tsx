@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,116 @@ interface Music {
   isNewOfWeek: boolean;
 }
 
+// Cache para evitar re-fetch desnecessário
+let musicsCache: Music[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+// Componente de loading otimizado
+const LoadingSpinner = memo(() => (
+  <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center">
+    <div className="text-center space-y-4">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+      <p className="text-muted-foreground">Carregando músicas...</p>
+    </div>
+  </div>
+));
+
+LoadingSpinner.displayName = "LoadingSpinner";
+
+// Componente de card de música otimizado
+const MusicCard = memo(
+  ({
+    music,
+    onViewMusic,
+  }: {
+    music: Music;
+    onViewMusic: (music: Music) => void;
+  }) => {
+    const handleViewClick = useCallback(() => {
+      onViewMusic(music);
+    }, [music, onViewMusic]);
+
+    const truncatedLyrics = useMemo(() => {
+      const lines = music.lyrics.split("\n");
+      return lines.length > 3
+        ? lines.slice(0, 3).join("\n") + "..."
+        : music.lyrics;
+    }, [music.lyrics]);
+
+    return (
+      <Card className="group hover:shadow-lg transition-all duration-200 hover:-translate-y-1 border-0 bg-gradient-to-r from-card to-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-3 sm:pb-4">
+          <CardTitle className="flex items-start justify-between space-y-2 sm:space-y-0 sm:flex-row sm:items-center">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                {music.title}
+              </h3>
+              {music.artist && (
+                <p className="text-sm text-muted-foreground truncate mt-1">
+                  {music.artist}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center space-x-2 flex-shrink-0">
+              {music.isNewOfWeek && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  <Star className="w-3 h-3 mr-1" />
+                  Nova
+                </span>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleViewClick}
+                className="h-8 px-3"
+              >
+                <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                <span className="hidden sm:inline">Ver</span>
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground line-clamp-3">
+              {truncatedLyrics}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+);
+
+MusicCard.displayName = "MusicCard";
+
+// Componente de busca otimizado
+const SearchInput = memo(
+  ({
+    searchTerm,
+    onSearchChange,
+  }: {
+    searchTerm: string;
+    onSearchChange: (value: string) => void;
+  }) => (
+    <div className="max-w-md mx-auto">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+        <Input
+          type="text"
+          placeholder="Buscar por título ou artista..."
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-10 h-12 text-base"
+        />
+      </div>
+    </div>
+  )
+);
+
+SearchInput.displayName = "SearchInput";
+
 export default function LouvoresPage() {
   const [musics, setMusics] = useState<Music[]>([]);
   const [filteredMusics, setFilteredMusics] = useState<Music[]>([]);
@@ -23,10 +133,54 @@ export default function LouvoresPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMusic, setSelectedMusic] = useState<Music | null>(null);
 
-  useEffect(() => {
-    fetchMusics();
+  // Memoização da função de busca
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
   }, []);
 
+  // Memoização da função de visualização
+  const handleViewMusic = useCallback((music: Music) => {
+    setSelectedMusic(music);
+  }, []);
+
+  // Memoização da função de fetch com cache
+  const fetchMusics = useCallback(async () => {
+    const now = Date.now();
+
+    // Verificar cache primeiro
+    if (musicsCache && now - cacheTimestamp < CACHE_DURATION) {
+      setMusics(musicsCache);
+      setFilteredMusics(musicsCache);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/musics", {
+        headers: {
+          "Cache-Control": "max-age=300",
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Atualizar cache
+        musicsCache = data;
+        cacheTimestamp = now;
+        setMusics(data);
+        setFilteredMusics(data);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar músicas:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMusics();
+  }, [fetchMusics]);
+
+  // Memoização do filtro de músicas
   useEffect(() => {
     const filtered = musics.filter(
       (music) =>
@@ -37,34 +191,15 @@ export default function LouvoresPage() {
     setFilteredMusics(filtered);
   }, [searchTerm, musics]);
 
-  const fetchMusics = async () => {
-    try {
-      const response = await fetch("/api/musics");
-      if (response.ok) {
-        const data = await response.json();
-        setMusics(data);
-        setFilteredMusics(data);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar músicas:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleViewMusic = (music: Music) => {
-    setSelectedMusic(music);
-  };
+  // Memoização do grid de músicas
+  const musicGrid = useMemo(() => {
+    return filteredMusics.map((music) => (
+      <MusicCard key={music.id} music={music} onViewMusic={handleViewMusic} />
+    ));
+  }, [filteredMusics, handleViewMusic]);
 
   if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Carregando músicas...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
@@ -91,70 +226,17 @@ export default function LouvoresPage() {
 
       {/* Search Section */}
       <div className="container mx-auto px-4 py-6 sm:py-8">
-        <div className="max-w-md mx-auto">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              type="text"
-              placeholder="Buscar por título ou artista..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-12 text-base"
-            />
-          </div>
-        </div>
+        <SearchInput
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+        />
       </div>
 
       {/* Musics Grid */}
       <div className="container mx-auto px-4 pb-8 sm:pb-12">
         {filteredMusics.length > 0 ? (
           <div className="grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredMusics.map((music) => (
-              <Card
-                key={music.id}
-                className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 bg-gradient-to-r from-card to-card/50 backdrop-blur-sm"
-              >
-                <CardHeader className="pb-3 sm:pb-4">
-                  <CardTitle className="flex items-start justify-between space-y-2 sm:space-y-0 sm:flex-row sm:items-center">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-base sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                        {music.title}
-                      </h3>
-                      {music.artist && (
-                        <p className="text-sm text-muted-foreground truncate mt-1">
-                          {music.artist}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                      {music.isNewOfWeek && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                          <Star className="w-3 h-3 mr-1" />
-                          Nova
-                        </span>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewMusic(music)}
-                        className="h-8 px-3"
-                      >
-                        <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                        <span className="hidden sm:inline">Ver</span>
-                      </Button>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {music.lyrics.split("\n").slice(0, 3).join("\n")}
-                      {music.lyrics.split("\n").length > 3 && "..."}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {musicGrid}
           </div>
         ) : (
           <div className="text-center py-12 sm:py-16">

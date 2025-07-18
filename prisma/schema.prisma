@@ -34,13 +34,14 @@ model WeeklyRepertoire {
   musicId   String
   position  Int      // Posição no repertório (1-6)
   isManual  Boolean  @default(false) // Se foi adicionada manualmente
+  weekStart DateTime // Data de início da semana
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relacionamento com a música
   music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
 
-  @@unique([position]) // Garante que cada posição seja única
+  @@unique([position, weekStart]) // Garante que cada posição seja única por semana
   @@map("weekly_repertoire")
 }
 
