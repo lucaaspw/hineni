@@ -75,6 +75,12 @@ export default function AdminPage() {
     position: 1,
     isManual: false,
   });
+  const [swapModal, setSwapModal] = useState<{
+    open: boolean;
+    item: RepertoireItem | null;
+  }>({ open: false, item: null });
+  const [swapMusicId, setSwapMusicId] = useState("");
+  const [swapLoading, setSwapLoading] = useState(false);
   const router = useRouter();
 
   const checkAuth = useCallback(async () => {
@@ -381,6 +387,34 @@ export default function AdminPage() {
     setSelectedMusic(music);
   };
 
+  // Função para trocar música do repertório
+  const handleSwapMusic = async () => {
+    if (!swapModal.item || !swapMusicId) return;
+    setSwapLoading(true);
+    try {
+      const response = await fetch(`/api/repertoire`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: swapModal.item.id,
+          musicId: swapMusicId,
+        }),
+      });
+      if (response.ok) {
+        setSwapModal({ open: false, item: null });
+        setSwapMusicId("");
+        fetchData();
+        toast.success("Música trocada com sucesso!");
+      } else {
+        toast.error("Erro ao trocar música do repertório");
+      }
+    } catch (error) {
+      toast.error("Erro ao trocar música do repertório");
+    } finally {
+      setSwapLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center">
@@ -658,11 +692,17 @@ export default function AdminPage() {
                           })
                         }
                         required
-                        className="w-full p-2 border rounded-md"
+                        className="w-full p-2 border rounded-md text-gray-500"
                       >
-                        <option value="">Selecione uma música</option>
+                        <option className="text-gray-500" value="">
+                          Selecione uma música
+                        </option>
                         {musics.map((music) => (
-                          <option key={music.id} value={music.id}>
+                          <option
+                            className="text-gray-500"
+                            key={music.id}
+                            value={music.id}
+                          >
                             {music.title}
                             {music.artist && ` - ${music.artist}`}
                             {music.isNewOfWeek && " ⭐ (Nova da Semana)"}
@@ -800,6 +840,14 @@ export default function AdminPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => setSwapModal({ open: true, item })}
+                          className="h-8 px-3"
+                        >
+                          Trocar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleViewMusic(item.music)}
                           className="h-8 px-3"
                         >
@@ -933,6 +981,56 @@ export default function AdminPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de troca de música */}
+      <Dialog
+        open={swapModal.open}
+        onOpenChange={(open) =>
+          setSwapModal({ open, item: open ? swapModal.item : null })
+        }
+      >
+        <DialogContent className="w-full sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Trocar Música do Repertório</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="swap-music">Escolha a nova música</Label>
+              <select
+                id="swap-music"
+                value={swapMusicId}
+                onChange={(e) => setSwapMusicId(e.target.value)}
+                className="w-full p-2 border rounded-md text-gray-500"
+              >
+                <option value="">Selecione uma música</option>
+                {musics
+                  .filter((m) => m.id !== swapModal.item?.music.id)
+                  .map((music) => (
+                    <option key={music.id} value={music.id}>
+                      {music.title}
+                      {music.artist && ` - ${music.artist}`}
+                      {music.isNewOfWeek && " ⭐ (Nova da Semana)"}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setSwapModal({ open: false, item: null })}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSwapMusic}
+                disabled={!swapMusicId || swapLoading}
+              >
+                {swapLoading ? "Trocando..." : "Trocar"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

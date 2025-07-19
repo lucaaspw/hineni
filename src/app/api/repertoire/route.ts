@@ -118,6 +118,46 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT - Trocar música do repertório
+export async function PUT(request: NextRequest) {
+  try {
+    const { id, musicId } = await request.json();
+    if (!id || !musicId) {
+      return NextResponse.json(
+        { message: "ID do item e ID da música são obrigatórios" },
+        { status: 400 }
+      );
+    }
+
+    // Verificar se a música existe
+    const music = await prisma.music.findUnique({ where: { id: musicId } });
+    if (!music) {
+      return NextResponse.json(
+        { message: "Música não encontrada" },
+        { status: 404 }
+      );
+    }
+
+    // Atualizar o item do repertório
+    const updated = await prisma.weeklyRepertoire.update({
+      where: { id },
+      data: { musicId },
+      include: { music: true },
+    });
+
+    // Invalidar cache
+    repertoireCache = null;
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("Erro ao trocar música do repertório:", error);
+    return NextResponse.json(
+      { message: "Erro interno do servidor" },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE - Remover do repertório
 export async function DELETE(request: NextRequest) {
   try {
