@@ -26,6 +26,9 @@ model Music {
   // Relacionamento com o repertório semanal
   weeklyRepertoire WeeklyRepertoire[]
 
+  @@index([title, artist]) // Índice para busca por título e artista
+  @@index([isNewOfWeek]) // Índice para música nova da semana
+  @@index([createdAt]) // Índice para ordenação por data de criação
   @@map("musics")
 }
 
@@ -42,6 +45,9 @@ model WeeklyRepertoire {
   music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
 
   @@unique([position, weekStart]) // Garante que cada posição seja única por semana
+  @@index([position]) // Índice para ordenação por posição
+  @@index([weekStart]) // Índice para filtros por semana
+  @@index([musicId]) // Índice para relacionamento com música
   @@map("weekly_repertoire")
 }
 

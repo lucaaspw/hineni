@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { musicSchema, musicEditSchema } from "@/lib/validations";
 
-// Cache em memória para músicas (5 minutos)
+// Cache em memória para músicas (10 minutos - aumentado para reduzir re-fetch)
 let musicsCache: unknown[] | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
 
 // Middleware para verificar autenticação
 async function verifyAuth(request: NextRequest) {
@@ -36,13 +36,23 @@ export async function GET() {
     if (musicsCache && now - cacheTimestamp < CACHE_DURATION) {
       return NextResponse.json(musicsCache, {
         headers: {
-          "Cache-Control": "public, max-age=300, s-maxage=600",
+          "Cache-Control": "public, max-age=600, s-maxage=1200",
           "X-Cache": "HIT",
         },
       });
     }
 
+    // Query otimizada com seleção específica de campos
     const musics = await prisma.music.findMany({
+      select: {
+        id: true,
+        title: true,
+        artist: true,
+        lyrics: true,
+        chords: true,
+        isNewOfWeek: true,
+        createdAt: true,
+      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -52,7 +62,7 @@ export async function GET() {
 
     return NextResponse.json(musics, {
       headers: {
-        "Cache-Control": "public, max-age=300, s-maxage=600",
+        "Cache-Control": "public, max-age=600, s-maxage=1200",
         "X-Cache": "MISS",
       },
     });
@@ -90,19 +100,24 @@ export async function POST(request: NextRequest) {
     const { title, artist, lyrics, chords, isNewOfWeek } =
       validationResult.data;
 
-    // Verificar se já existe uma música com o mesmo título e artista
+    // Query otimizada para verificar duplicatas
     const existingMusic = await prisma.music.findFirst({
       where: {
         title: {
           equals: title,
-          mode: "insensitive", // Case insensitive
+          mode: "insensitive",
         },
         artist: artist
           ? {
               equals: artist,
-              mode: "insensitive", // Case insensitive
+              mode: "insensitive",
             }
           : null,
+      },
+      select: {
+        id: true,
+        title: true,
+        artist: true,
       },
     });
 
@@ -110,11 +125,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           message: "Já existe uma música com este título e artista",
-          existingMusic: {
-            id: existingMusic.id,
-            title: existingMusic.title,
-            artist: existingMusic.artist,
-          },
+          existingMusic,
         },
         { status: 409 }
       );
@@ -124,6 +135,7 @@ export async function POST(request: NextRequest) {
     if (isNewOfWeek) {
       const existingNewOfWeek = await prisma.music.findFirst({
         where: { isNewOfWeek: true },
+        select: { id: true },
       });
 
       if (existingNewOfWeek) {
@@ -142,9 +154,18 @@ export async function POST(request: NextRequest) {
         chords,
         isNewOfWeek,
       },
+      select: {
+        id: true,
+        title: true,
+        artist: true,
+        lyrics: true,
+        chords: true,
+        isNewOfWeek: true,
+        createdAt: true,
+      },
     });
 
-    // Invalidar cache
+    // Invalidar cache apenas se necessário
     musicsCache = null;
 
     return NextResponse.json(music, { status: 201 });
@@ -182,20 +203,25 @@ export async function PUT(request: NextRequest) {
     const { id, title, artist, lyrics, chords, isNewOfWeek } =
       validationResult.data;
 
-    // Verificar se já existe uma música com o mesmo título e artista (excluindo a atual)
+    // Query otimizada para verificar duplicatas
     const existingMusic = await prisma.music.findFirst({
       where: {
-        id: { not: id }, // Excluir a música atual
+        id: { not: id },
         title: {
           equals: title,
-          mode: "insensitive", // Case insensitive
+          mode: "insensitive",
         },
         artist: artist
           ? {
               equals: artist,
-              mode: "insensitive", // Case insensitive
+              mode: "insensitive",
             }
           : null,
+      },
+      select: {
+        id: true,
+        title: true,
+        artist: true,
       },
     });
 
@@ -203,11 +229,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         {
           message: "Já existe uma música com este título e artista",
-          existingMusic: {
-            id: existingMusic.id,
-            title: existingMusic.title,
-            artist: existingMusic.artist,
-          },
+          existingMusic,
         },
         { status: 409 }
       );
@@ -218,8 +240,9 @@ export async function PUT(request: NextRequest) {
       const existingNewOfWeek = await prisma.music.findFirst({
         where: {
           isNewOfWeek: true,
-          id: { not: id }, // Excluir a música atual
+          id: { not: id },
         },
+        select: { id: true },
       });
 
       if (existingNewOfWeek) {
@@ -239,9 +262,18 @@ export async function PUT(request: NextRequest) {
         chords,
         isNewOfWeek,
       },
+      select: {
+        id: true,
+        title: true,
+        artist: true,
+        lyrics: true,
+        chords: true,
+        isNewOfWeek: true,
+        createdAt: true,
+      },
     });
 
-    // Invalidar cache
+    // Invalidar cache apenas se necessário
     musicsCache = null;
 
     return NextResponse.json(music);

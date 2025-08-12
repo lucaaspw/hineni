@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,12 @@ interface RepertoireItem {
   isManual: boolean;
   music: Music;
 }
+
+// Cache local para evitar re-fetch desnecessário
+let localMusicsCache: Music[] | null = null;
+let localRepertoireCache: RepertoireItem[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 export default function AdminPage() {
   const [musics, setMusics] = useState<Music[]>([]);
@@ -99,7 +105,17 @@ export default function AdminPage() {
     fetchData();
   }, [checkAuth]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    const now = Date.now();
+
+    // Verificar cache local primeiro
+    if (localMusicsCache && localRepertoireCache && now - cacheTimestamp < CACHE_DURATION) {
+      setMusics(localMusicsCache);
+      setRepertoire(localRepertoireCache);
+      setLoading(false);
+      return;
+    }
+
     try {
       const [musicsResponse, repertoireResponse] = await Promise.all([
         fetch("/api/musics"),
@@ -109,18 +125,23 @@ export default function AdminPage() {
       if (musicsResponse.ok) {
         const musicsData = await musicsResponse.json();
         setMusics(musicsData);
+        localMusicsCache = musicsData;
       }
 
       if (repertoireResponse.ok) {
         const repertoireData = await repertoireResponse.json();
         setRepertoire(repertoireData);
+        localRepertoireCache = repertoireData;
       }
+
+      // Atualizar timestamp do cache
+      cacheTimestamp = now;
     } catch {
       console.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -131,7 +152,8 @@ export default function AdminPage() {
     }
   };
 
-  const checkDuplicateMusic = (
+  // Função otimizada para verificar duplicatas
+  const checkDuplicateMusic = useCallback((
     title: string,
     artist: string,
     excludeId?: string
@@ -142,44 +164,12 @@ export default function AdminPage() {
         music.title.toLowerCase() === title.toLowerCase() &&
         (music.artist || "").toLowerCase() === (artist || "").toLowerCase()
     );
-  };
+  }, [musics]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
     setErrorMessage("");
-
-    // Verificar duplicata no frontend primeiro
-    const duplicate = checkDuplicateMusic(formData.title, formData.artist);
-    if (duplicate) {
-      setErrorMessage(
-        `Música duplicada: "${duplicate.title}" por ${
-          duplicate.artist || "Artista não informado"
-        }`
-      );
-      toast.error(
-        `Música duplicada: "${duplicate.title}" por ${
-          duplicate.artist || "Artista não informado"
-        }`
-      );
-      setFormLoading(false);
-      return;
-    }
-
-    // Verificar se já existe música nova da semana
-    if (formData.isNewOfWeek) {
-      const existingNewOfWeek = musics.find((music) => music.isNewOfWeek);
-      if (existingNewOfWeek) {
-        setErrorMessage(
-          `Já existe uma música nova da semana: "${existingNewOfWeek.title}"`
-        );
-        toast.error(
-          `Já existe uma música nova da semana: "${existingNewOfWeek.title}"`
-        );
-        setFormLoading(false);
-        return;
-      }
-    }
 
     try {
       const response = await fetch("/api/musics", {
@@ -199,25 +189,17 @@ export default function AdminPage() {
           isNewOfWeek: false,
         });
         setShowAddForm(false);
-        fetchData();
+        
+        // Atualizar cache local imediatamente
+        const newMusic = await response.json();
+        setMusics(prev => [newMusic, ...prev]);
+        localMusicsCache = [newMusic, ...(localMusicsCache || [])];
+        
         toast.success("Música adicionada com sucesso!");
       } else {
         const errorData = await response.json();
-        if (response.status === 409) {
-          setErrorMessage(
-            `Música duplicada: "${errorData.existingMusic.title}" por ${
-              errorData.existingMusic.artist || "Artista não informado"
-            }`
-          );
-          toast.error(
-            `Música duplicada: "${errorData.existingMusic.title}" por ${
-              errorData.existingMusic.artist || "Artista não informado"
-            }`
-          );
-        } else {
-          setErrorMessage(errorData.message || "Erro ao adicionar música");
-          toast.error(errorData.message || "Erro ao adicionar música");
-        }
+        setErrorMessage(errorData.message || "Erro ao adicionar música");
+        toast.error(errorData.message || "Erro ao adicionar música");
       }
     } catch (error) {
       console.error("Erro ao adicionar música:", error);
@@ -248,7 +230,12 @@ export default function AdminPage() {
           isManual: false,
         });
         setShowRepertoireForm(false);
-        fetchData();
+        
+        // Atualizar cache local imediatamente
+        const newItem = await response.json();
+        setRepertoire(prev => [...prev, newItem]);
+        localRepertoireCache = [...(localRepertoireCache || []), newItem];
+        
         toast.success("Música adicionada ao repertório!");
       } else {
         toast.error("Erro ao adicionar ao repertório");
@@ -269,7 +256,14 @@ export default function AdminPage() {
         method: "DELETE",
       });
       if (response.ok) {
-        fetchData();
+        // Atualizar cache local imediatamente
+        setMusics(prev => prev.filter(music => music.id !== id));
+        localMusicsCache = (localMusicsCache || []).filter(music => music.id !== id);
+        
+        // Remover do repertório se estiver lá
+        setRepertoire(prev => prev.filter(item => item.music.id !== id));
+        localRepertoireCache = (localRepertoireCache || []).filter(item => item.music.id !== id);
+        
         toast.success("Música removida com sucesso!");
       } else {
         toast.error("Erro ao remover música");
@@ -297,44 +291,6 @@ export default function AdminPage() {
     setFormLoading(true);
     setErrorMessage("");
 
-    // Verificar duplicata no frontend primeiro
-    const duplicate = checkDuplicateMusic(
-      editFormData.title,
-      editFormData.artist,
-      editFormData.id
-    );
-    if (duplicate) {
-      setErrorMessage(
-        `Música duplicada: "${duplicate.title}" por ${
-          duplicate.artist || "Artista não informado"
-        }`
-      );
-      toast.error(
-        `Música duplicada: "${duplicate.title}" por ${
-          duplicate.artist || "Artista não informado"
-        }`
-      );
-      setFormLoading(false);
-      return;
-    }
-
-    // Verificar se já existe música nova da semana
-    if (editFormData.isNewOfWeek) {
-      const existingNewOfWeek = musics.find(
-        (music) => music.isNewOfWeek && music.id !== editFormData.id
-      );
-      if (existingNewOfWeek) {
-        setErrorMessage(
-          `Já existe uma música nova da semana: "${existingNewOfWeek.title}"`
-        );
-        toast.error(
-          `Já existe uma música nova da semana: "${existingNewOfWeek.title}"`
-        );
-        setFormLoading(false);
-        return;
-      }
-    }
-
     try {
       const response = await fetch("/api/musics", {
         method: "PUT",
@@ -345,6 +301,28 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
+        const updatedMusic = await response.json();
+        
+        // Atualizar cache local imediatamente
+        setMusics(prev => prev.map(music => 
+          music.id === updatedMusic.id ? updatedMusic : music
+        ));
+        localMusicsCache = (localMusicsCache || []).map(music => 
+          music.id === updatedMusic.id ? updatedMusic : music
+        );
+        
+        // Atualizar no repertório se estiver lá
+        setRepertoire(prev => prev.map(item => 
+          item.music.id === updatedMusic.id 
+            ? { ...item, music: updatedMusic }
+            : item
+        ));
+        localRepertoireCache = (localRepertoireCache || []).map(item => 
+          item.music.id === updatedMusic.id 
+            ? { ...item, music: updatedMusic }
+            : item
+        );
+        
         setEditFormData({
           id: "",
           title: "",
@@ -354,25 +332,11 @@ export default function AdminPage() {
           isNewOfWeek: false,
         });
         setShowEditForm(false);
-        fetchData();
         toast.success("Música editada com sucesso!");
       } else {
         const errorData = await response.json();
-        if (response.status === 409) {
-          setErrorMessage(
-            `Música duplicada: "${errorData.existingMusic.title}" por ${
-              errorData.existingMusic.artist || "Artista não informado"
-            }`
-          );
-          toast.error(
-            `Música duplicada: "${errorData.existingMusic.title}" por ${
-              errorData.existingMusic.artist || "Artista não informado"
-            }`
-          );
-        } else {
-          setErrorMessage(errorData.message || "Erro ao editar música");
-          toast.error(errorData.message || "Erro ao editar música");
-        }
+        setErrorMessage(errorData.message || "Erro ao editar música");
+        toast.error(errorData.message || "Erro ao editar música");
       }
     } catch (error) {
       console.error("Erro ao editar música:", error);
@@ -401,9 +365,18 @@ export default function AdminPage() {
         }),
       });
       if (response.ok) {
+        const updatedItem = await response.json();
+        
+        // Atualizar cache local imediatamente
+        setRepertoire(prev => prev.map(item => 
+          item.id === updatedItem.id ? updatedItem : item
+        ));
+        localRepertoireCache = (localRepertoireCache || []).map(item => 
+          item.id === updatedItem.id ? updatedItem : item
+        );
+        
         setSwapModal({ open: false, item: null });
         setSwapMusicId("");
-        fetchData();
         toast.success("Música trocada com sucesso!");
       } else {
         toast.error("Erro ao trocar música do repertório");
@@ -414,6 +387,13 @@ export default function AdminPage() {
       setSwapLoading(false);
     }
   };
+
+  // Memoização das músicas filtradas para o select
+  const availableMusicsForRepertoire = useMemo(() => {
+    return musics.filter(music => 
+      !repertoire.some(item => item.music.id === music.id)
+    );
+  }, [musics, repertoire]);
 
   if (loading) {
     return (
@@ -434,7 +414,7 @@ export default function AdminPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center space-x-3">
               <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10">
-                <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                <Settings className="w-5 h-5 sm:w-6 sm:w-6 text-primary" />
               </div>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
@@ -628,7 +608,7 @@ export default function AdminPage() {
                           onClick={() => handleEditMusic(music)}
                           className="h-8 px-3"
                         >
-                          <Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                          <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                           <span className="hidden sm:inline">Editar</span>
                         </Button>
                         <Button
@@ -697,7 +677,7 @@ export default function AdminPage() {
                         <option className="text-gray-500" value="">
                           Selecione uma música
                         </option>
-                        {musics.map((music) => (
+                        {availableMusicsForRepertoire.map((music) => (
                           <option
                             className="text-gray-500"
                             key={music.id}

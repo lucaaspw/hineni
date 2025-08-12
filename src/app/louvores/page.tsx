@@ -16,10 +16,10 @@ interface Music {
   isNewOfWeek: boolean;
 }
 
-// Cache para evitar re-fetch desnecessário
+// Cache para evitar re-fetch desnecessário (aumentado para 10 minutos)
 let musicsCache: Music[] | null = null;
 let cacheTimestamp = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
 
 // Componente de loading otimizado
 const LoadingSpinner = memo(() => (
@@ -143,7 +143,7 @@ export default function LouvoresPage() {
     setSelectedMusic(music);
   }, []);
 
-  // Memoização da função de fetch com cache
+  // Memoização da função de fetch com cache otimizado
   const fetchMusics = useCallback(async () => {
     const now = Date.now();
 
@@ -158,7 +158,7 @@ export default function LouvoresPage() {
     try {
       const response = await fetch("/api/musics", {
         headers: {
-          "Cache-Control": "max-age=300",
+          "Cache-Control": "max-age=600",
         },
       });
       if (response.ok) {
@@ -180,13 +180,18 @@ export default function LouvoresPage() {
     fetchMusics();
   }, [fetchMusics]);
 
-  // Memoização do filtro de músicas
+  // Memoização do filtro de músicas otimizada
   useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredMusics(musics);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
     const filtered = musics.filter(
       (music) =>
-        music.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (music.artist &&
-          music.artist.toLowerCase().includes(searchTerm.toLowerCase()))
+        music.title.toLowerCase().includes(searchLower) ||
+        (music.artist && music.artist.toLowerCase().includes(searchLower))
     );
     setFilteredMusics(filtered);
   }, [searchTerm, musics]);

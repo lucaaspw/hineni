@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Cache em memória para repertório (5 minutos)
+// Cache em memória para repertório (10 minutos - aumentado para reduzir re-fetch)
 let repertoireCache: unknown[] | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
 
 // GET - Listar repertório
 export async function GET() {
@@ -15,16 +15,29 @@ export async function GET() {
     if (repertoireCache && now - cacheTimestamp < CACHE_DURATION) {
       return NextResponse.json(repertoireCache, {
         headers: {
-          "Cache-Control": "public, max-age=300, s-maxage=600",
+          "Cache-Control": "public, max-age=600, s-maxage=1200",
           "X-Cache": "HIT",
         },
       });
     }
 
-    // Buscar dados do banco
+    // Query otimizada com seleção específica de campos
     const repertoire = await prisma.weeklyRepertoire.findMany({
-      include: {
-        music: true,
+      select: {
+        id: true,
+        position: true,
+        isManual: true,
+        weekStart: true,
+        music: {
+          select: {
+            id: true,
+            title: true,
+            artist: true,
+            lyrics: true,
+            chords: true,
+            isNewOfWeek: true,
+          },
+        },
       },
       orderBy: [
         {
@@ -44,7 +57,7 @@ export async function GET() {
 
     return NextResponse.json(repertoire, {
       headers: {
-        "Cache-Control": "public, max-age=300, s-maxage=600",
+        "Cache-Control": "public, max-age=600, s-maxage=1200",
         "X-Cache": "MISS",
       },
     });
@@ -69,9 +82,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se a música existe
+    // Query otimizada para verificar se a música existe
     const music = await prisma.music.findUnique({
       where: { id: musicId },
+      select: { id: true },
     });
 
     if (!music) {
@@ -81,9 +95,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se a posição já está ocupada
+    // Query otimizada para verificar se a posição já está ocupada
     const existingItem = await prisma.weeklyRepertoire.findFirst({
       where: { position },
+      select: { id: true },
     });
 
     if (existingItem) {
@@ -100,8 +115,21 @@ export async function POST(request: NextRequest) {
         isManual,
         weekStart: new Date(),
       },
-      include: {
-        music: true,
+      select: {
+        id: true,
+        position: true,
+        isManual: true,
+        weekStart: true,
+        music: {
+          select: {
+            id: true,
+            title: true,
+            artist: true,
+            lyrics: true,
+            chords: true,
+            isNewOfWeek: true,
+          },
+        },
       },
     });
 
@@ -129,8 +157,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verificar se a música existe
-    const music = await prisma.music.findUnique({ where: { id: musicId } });
+    // Query otimizada para verificar se a música existe
+    const music = await prisma.music.findUnique({ 
+      where: { id: musicId },
+      select: { id: true },
+    });
     if (!music) {
       return NextResponse.json(
         { message: "Música não encontrada" },
@@ -138,11 +169,26 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Atualizar o item do repertório
+    // Atualizar o item do repertório com seleção otimizada
     const updated = await prisma.weeklyRepertoire.update({
       where: { id },
       data: { musicId },
-      include: { music: true },
+      select: {
+        id: true,
+        position: true,
+        isManual: true,
+        weekStart: true,
+        music: {
+          select: {
+            id: true,
+            title: true,
+            artist: true,
+            lyrics: true,
+            chords: true,
+            isNewOfWeek: true,
+          },
+        },
+      },
     });
 
     // Invalidar cache

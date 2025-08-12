@@ -137,17 +137,17 @@ const SkeletonCard = memo(() => (
 
 SkeletonCard.displayName = "SkeletonCard";
 
-// Cache para evitar re-fetch desnecessário
+// Cache para evitar re-fetch desnecessário (aumentado para 10 minutos)
 let repertoireCache: RepertoireItem[] | null = null;
 let cacheTimestamp = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
 
 export default function Home() {
   const [repertoire, setRepertoire] = useState<RepertoireItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMusic, setSelectedMusic] = useState<Music | null>(null);
 
-  // Memoização da função de fetch com cache
+  // Memoização da função de fetch com cache otimizado
   const fetchRepertoire = useCallback(async () => {
     const now = Date.now();
 
@@ -161,7 +161,7 @@ export default function Home() {
     try {
       const response = await fetch("/api/repertoire", {
         headers: {
-          "Cache-Control": "max-age=300",
+          "Cache-Control": "max-age=600",
         },
       });
       if (response.ok) {
