@@ -25,6 +25,7 @@ import {
   Trash2,
   Eye,
   Edit,
+  Calendar,
 } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
 import { toast } from "sonner";
@@ -61,6 +62,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [generatingRepertoire, setGeneratingRepertoire] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     artist: "",
@@ -388,6 +390,42 @@ export default function AdminPage() {
     }
   };
 
+  // Função para gerar repertório automaticamente
+  const handleGenerateRepertoire = async () => {
+    if (!confirm("Isso irá limpar o repertório atual e gerar um novo automaticamente. Continuar?")) {
+      return;
+    }
+
+    setGeneratingRepertoire(true);
+    try {
+      const response = await fetch("/api/repertoire/generate", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`Repertório gerado com sucesso! ${result.total} músicas adicionadas.`);
+        
+        // Atualizar o repertório na interface
+        if (result.repertoire) {
+          setRepertoire(result.repertoire);
+          localRepertoireCache = result.repertoire;
+        }
+        
+        // Recarregar dados para garantir sincronização
+        fetchData();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || "Erro ao gerar repertório");
+      }
+    } catch (error) {
+      console.error("Erro ao gerar repertório:", error);
+      toast.error("Erro ao gerar repertório");
+    } finally {
+      setGeneratingRepertoire(false);
+    }
+  };
+
   // Memoização das músicas filtradas para o select
   const availableMusicsForRepertoire = useMemo(() => {
     return musics.filter(music => 
@@ -642,112 +680,144 @@ export default function AdminPage() {
                 <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
                 <span>Repertório Semanal ({repertoire.length})</span>
               </h2>
-              <Dialog
-                open={showRepertoireForm}
-                onOpenChange={setShowRepertoireForm}
-              >
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar ao Repertório
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-md sm:max-h-[calc(100vh-4rem)] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center space-x-2">
-                      <Plus className="w-5 h-5" />
-                      <span>Adicionar ao Repertório</span>
-                    </DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleRepertoireSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="musicId">Música *</Label>
-                      <select
-                        id="musicId"
-                        value={repertoireFormData.musicId}
-                        onChange={(e) =>
-                          setRepertoireFormData({
-                            ...repertoireFormData,
-                            musicId: e.target.value,
-                          })
-                        }
-                        required
-                        className="w-full p-2 border rounded-md text-gray-500"
-                      >
-                        <option className="text-gray-500" value="">
-                          Selecione uma música
-                        </option>
-                        {availableMusicsForRepertoire.map((music) => (
-                          <option
-                            className="text-gray-500"
-                            key={music.id}
-                            value={music.id}
-                          >
-                            {music.title}
-                            {music.artist && ` - ${music.artist}`}
-                            {music.isNewOfWeek && " ⭐ (Nova da Semana)"}
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={handleGenerateRepertoire}
+                  disabled={generatingRepertoire}
+                  className="w-full sm:w-auto"
+                >
+                  {generatingRepertoire ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                      Gerando...
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Gerar Automático
+                    </>
+                  )}
+                </Button>
+                <Dialog
+                  open={showRepertoireForm}
+                  onOpenChange={setShowRepertoireForm}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Manual
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-md sm:max-h-[calc(100vh-4rem)] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center space-x-2">
+                        <Plus className="w-5 h-5" />
+                        <span>Adicionar ao Repertório</span>
+                      </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleRepertoireSubmit} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="musicId">Música *</Label>
+                        <select
+                          id="musicId"
+                          value={repertoireFormData.musicId}
+                          onChange={(e) =>
+                            setRepertoireFormData({
+                              ...repertoireFormData,
+                              musicId: e.target.value,
+                            })
+                          }
+                          required
+                          className="w-full p-2 border rounded-md text-gray-500"
+                        >
+                          <option className="text-gray-500" value="">
+                            Selecione uma música
                           </option>
-                        ))}
-                      </select>
-                    </div>
+                          {availableMusicsForRepertoire.map((music) => (
+                            <option
+                              className="text-gray-500"
+                              key={music.id}
+                              value={music.id}
+                            >
+                              {music.title}
+                              {music.artist && ` - ${music.artist}`}
+                              {music.isNewOfWeek && " ⭐ (Nova da Semana)"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="position">Posição *</Label>
-                      <Input
-                        id="position"
-                        type="number"
-                        min="1"
-                        max="6"
-                        value={repertoireFormData.position}
-                        onChange={(e) =>
-                          setRepertoireFormData({
-                            ...repertoireFormData,
-                            position: parseInt(e.target.value),
-                          })
-                        }
-                        required
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        💡 A música nova da semana aparecerá automaticamente em
-                        primeiro lugar
-                      </p>
-                    </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="position">Posição *</Label>
+                        <Input
+                          id="position"
+                          type="number"
+                          min="1"
+                          max="6"
+                          value={repertoireFormData.position}
+                          onChange={(e) =>
+                            setRepertoireFormData({
+                              ...repertoireFormData,
+                              position: parseInt(e.target.value),
+                            })
+                          }
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          💡 A música nova da semana aparecerá automaticamente em
+                          primeiro lugar
+                        </p>
+                      </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="isManual"
-                        checked={repertoireFormData.isManual}
-                        onCheckedChange={(checked) =>
-                          setRepertoireFormData({
-                            ...repertoireFormData,
-                            isManual: checked as boolean,
-                          })
-                        }
-                      />
-                      <Label htmlFor="isManual">Adição manual</Label>
-                    </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="isManual"
+                          checked={repertoireFormData.isManual}
+                          onCheckedChange={(checked) =>
+                            setRepertoireFormData({
+                              ...repertoireFormData,
+                              isManual: checked as boolean,
+                            })
+                          }
+                        />
+                        <Label htmlFor="isManual">Adição manual</Label>
+                      </div>
 
-                    <div className="flex flex-col-reverse sm:flex-row justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-2 pt-4 sticky bottom-0 bg-background pb-2 sm:pb-0">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowRepertoireForm(false)}
-                        className="w-full sm:w-auto"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={formLoading}
-                        className="w-full sm:w-auto"
-                      >
-                        {formLoading ? "Adicionando..." : "Adicionar"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                      <div className="flex flex-col-reverse sm:flex-row justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-2 pt-4 sticky bottom-0 bg-background pb-2 sm:pb-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowRepertoireForm(false)}
+                          className="w-full sm:w-auto"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={formLoading}
+                          className="w-full sm:w-auto"
+                        >
+                          {formLoading ? "Adicionando..." : "Adicionar"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
+
+            {/* Indicador de status do repertório */}
+            {repertoire.length === 0 && (
+              <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
+                <div className="flex items-center space-x-2 text-sm text-yellow-800 dark:text-yellow-200">
+                  <FileText className="w-4 h-4" />
+                  <span>
+                    <strong>Repertório vazio</strong> - Use "Gerar Automático" para criar um novo repertório
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Indicador de ordenação */}
             {repertoire.length > 0 && (
