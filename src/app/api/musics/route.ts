@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { musicSchema, musicEditSchema } from "@/lib/validations";
 
-// Cache em memória para músicas (10 minutos - aumentado para reduzir re-fetch)
+// Cache em memória para músicas (reduzido para 2 minutos em produção)
 let musicsCache: unknown[] | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
+const CACHE_DURATION = process.env.NODE_ENV === 'production' ? 2 * 60 * 1000 : 10 * 60 * 1000; // 2 min produção, 10 min dev
 
 // Middleware para verificar autenticação
 async function verifyAuth(request: NextRequest) {
@@ -27,17 +27,29 @@ async function verifyAuth(request: NextRequest) {
   }
 }
 
+// Função para invalidar cache
+function invalidateCache() {
+  musicsCache = null;
+  cacheTimestamp = 0;
+}
+
 // GET - Listar todas as músicas
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const now = Date.now();
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    // Verificar cache
-    if (musicsCache && now - cacheTimestamp < CACHE_DURATION) {
+    // Verificar cache apenas se não for uma requisição de refresh
+    const isRefresh = request.headers.get('cache-control') === 'no-cache';
+    
+    if (!isRefresh && musicsCache && now - cacheTimestamp < CACHE_DURATION) {
       return NextResponse.json(musicsCache, {
         headers: {
-          "Cache-Control": "public, max-age=600, s-maxage=1200",
+          "Cache-Control": isProduction 
+            ? "public, max-age=120, s-maxage=300, stale-while-revalidate=60"
+            : "public, max-age=600, s-maxage=1200",
           "X-Cache": "HIT",
+          "X-Cache-TTL": `${Math.ceil((CACHE_DURATION - (now - cacheTimestamp)) / 1000)}s`,
         },
       });
     }
@@ -52,6 +64,7 @@ export async function GET() {
         chords: true,
         isNewOfWeek: true,
         createdAt: true,
+        updatedAt: true, // Adicionar updatedAt para melhor controle de cache
       },
       orderBy: { createdAt: "desc" },
     });
@@ -62,8 +75,12 @@ export async function GET() {
 
     return NextResponse.json(musics, {
       headers: {
-        "Cache-Control": "public, max-age=600, s-maxage=1200",
+        "Cache-Control": isProduction 
+          ? "public, max-age=120, s-maxage=300, stale-while-revalidate=60"
+          : "public, max-age=600, s-maxage=1200",
         "X-Cache": "MISS",
+        "X-Cache-TTL": `${Math.ceil(CACHE_DURATION / 1000)}s`,
+        "ETag": `"${Date.now()}"`, // ETag para validação de cache
       },
     });
   } catch (error) {
@@ -162,13 +179,21 @@ export async function POST(request: NextRequest) {
         chords: true,
         isNewOfWeek: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
 
-    // Invalidar cache apenas se necessário
-    musicsCache = null;
+    // Invalidar cache imediatamente
+    invalidateCache();
 
-    return NextResponse.json(music, { status: 201 });
+    return NextResponse.json(music, { 
+      status: 201,
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      }
+    });
   } catch (error) {
     console.error("Erro ao criar música:", error);
     return NextResponse.json(
@@ -261,6 +286,7 @@ export async function PUT(request: NextRequest) {
         lyrics,
         chords,
         isNewOfWeek,
+        updatedAt: new Date(), // Forçar atualização do timestamp
       },
       select: {
         id: true,
@@ -270,13 +296,20 @@ export async function PUT(request: NextRequest) {
         chords: true,
         isNewOfWeek: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
 
-    // Invalidar cache apenas se necessário
-    musicsCache = null;
+    // Invalidar cache imediatamente
+    invalidateCache();
 
-    return NextResponse.json(music);
+    return NextResponse.json(music, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      }
+    });
   } catch (error) {
     console.error("Erro ao atualizar música:", error);
     return NextResponse.json(
@@ -308,10 +341,16 @@ export async function DELETE(request: NextRequest) {
       where: { id },
     });
 
-    // Invalidar cache
-    musicsCache = null;
+    // Invalidar cache imediatamente
+    invalidateCache();
 
-    return NextResponse.json({ message: "Música removida com sucesso" });
+    return NextResponse.json({ message: "Música removida com sucesso" }, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      }
+    });
   } catch (error) {
     console.error("Erro ao remover música:", error);
     return NextResponse.json(

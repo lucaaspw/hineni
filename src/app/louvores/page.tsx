@@ -58,12 +58,21 @@ const MusicCard = memo(
         <CardHeader className="pb-3 sm:pb-4">
           <CardTitle className="flex items-start justify-between space-y-2 sm:space-y-0 sm:flex-row sm:items-center">
             <div className="flex-1 min-w-0">
-              <h3 className="text-base sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                {music.title}
+              <h3 
+                className="text-base sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors truncate"
+                title={music.title}
+              >
+                {music.title.length > 35 
+                  ? `${music.title.substring(0, 35)}...` 
+                  : music.title
+                }
               </h3>
               {music.artist && (
-                <p className="text-sm text-muted-foreground truncate mt-1">
-                  {music.artist}
+                <p className="text-sm text-muted-foreground truncate mt-1" title={music.artist}>
+                  {music.artist.length > 25 
+                    ? `${music.artist.substring(0, 25)}...` 
+                    : music.artist
+                  }
                 </p>
               )}
             </div>

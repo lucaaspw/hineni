@@ -54,11 +54,19 @@ export const MusicViewer = memo(
           <DialogHeader className="px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6 pb-2 sm:pb-3 md:pb-4 flex-shrink-0">
             <DialogTitle className="text-base sm:text-lg md:text-xl font-bold text-foreground flex items-center space-x-2 pr-6 sm:pr-8">
               <Music className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-primary" />
-              <span className="truncate">{music.title}</span>
+              <span className="truncate" title={music.title}>
+                {music.title.length > 40 
+                  ? `${music.title.substring(0, 40)}...` 
+                  : music.title
+                }
+              </span>
             </DialogTitle>
             {music.artist && (
-              <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1">
-                {music.artist}
+              <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1 truncate" title={music.artist}>
+                {music.artist.length > 35 
+                  ? `${music.artist.substring(0, 35)}...` 
+                  : music.artist
+                }
               </p>
             )}
           </DialogHeader>

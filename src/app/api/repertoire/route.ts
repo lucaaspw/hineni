@@ -1,22 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Cache em memória para repertório (10 minutos - aumentado para reduzir re-fetch)
+// Cache em memória para repertório (reduzido para 2 minutos em produção)
 let repertoireCache: unknown[] | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
+const CACHE_DURATION = process.env.NODE_ENV === 'production' ? 2 * 60 * 1000 : 10 * 60 * 1000; // 2 min produção, 10 min dev
+
+// Função para invalidar cache
+function invalidateCache() {
+  repertoireCache = null;
+  cacheTimestamp = 0;
+}
 
 // GET - Listar repertório
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const now = Date.now();
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    // Verificar cache
-    if (repertoireCache && now - cacheTimestamp < CACHE_DURATION) {
+    // Verificar cache apenas se não for uma requisição de refresh
+    const isRefresh = request.headers.get('cache-control') === 'no-cache';
+    
+    if (!isRefresh && repertoireCache && now - cacheTimestamp < CACHE_DURATION) {
       return NextResponse.json(repertoireCache, {
         headers: {
-          "Cache-Control": "public, max-age=600, s-maxage=1200",
+          "Cache-Control": isProduction 
+            ? "public, max-age=120, s-maxage=300, stale-while-revalidate=60"
+            : "public, max-age=600, s-maxage=1200",
           "X-Cache": "HIT",
+          "X-Cache-TTL": `${Math.ceil((CACHE_DURATION - (now - cacheTimestamp)) / 1000)}s`,
         },
       });
     }
@@ -36,6 +48,7 @@ export async function GET() {
             lyrics: true,
             chords: true,
             isNewOfWeek: true,
+            updatedAt: true, // Adicionar updatedAt para melhor controle de cache
           },
         },
       },
@@ -57,8 +70,12 @@ export async function GET() {
 
     return NextResponse.json(repertoire, {
       headers: {
-        "Cache-Control": "public, max-age=600, s-maxage=1200",
+        "Cache-Control": isProduction 
+          ? "public, max-age=120, s-maxage=300, stale-while-revalidate=60"
+          : "public, max-age=600, s-maxage=1200",
         "X-Cache": "MISS",
+        "X-Cache-TTL": `${Math.ceil(CACHE_DURATION / 1000)}s`,
+        "ETag": `"${Date.now()}"`, // ETag para validação de cache
       },
     });
   } catch (error) {
@@ -128,15 +145,23 @@ export async function POST(request: NextRequest) {
             lyrics: true,
             chords: true,
             isNewOfWeek: true,
+            updatedAt: true,
           },
         },
       },
     });
 
-    // Invalidar cache
-    repertoireCache = null;
+    // Invalidar cache imediatamente
+    invalidateCache();
 
-    return NextResponse.json(repertoireItem, { status: 201 });
+    return NextResponse.json(repertoireItem, { 
+      status: 201,
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      }
+    });
   } catch (error) {
     console.error("Erro ao adicionar ao repertório:", error);
     return NextResponse.json(
@@ -186,15 +211,22 @@ export async function PUT(request: NextRequest) {
             lyrics: true,
             chords: true,
             isNewOfWeek: true,
+            updatedAt: true,
           },
         },
       },
     });
 
-    // Invalidar cache
-    repertoireCache = null;
+    // Invalidar cache imediatamente
+    invalidateCache();
 
-    return NextResponse.json(updated);
+    return NextResponse.json(updated, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      }
+    });
   } catch (error) {
     console.error("Erro ao trocar música do repertório:", error);
     return NextResponse.json(
@@ -221,10 +253,16 @@ export async function DELETE(request: NextRequest) {
       where: { id },
     });
 
-    // Invalidar cache
-    repertoireCache = null;
+    // Invalidar cache imediatamente
+    invalidateCache();
 
-    return NextResponse.json({ message: "Item removido com sucesso" });
+    return NextResponse.json({ message: "Item removido com sucesso" }, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      }
+    });
   } catch (error) {
     console.error("Erro ao remover do repertório:", error);
     return NextResponse.json(

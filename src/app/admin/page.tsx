@@ -47,37 +47,25 @@ interface RepertoireItem {
 }
 
 // Cache local para evitar re-fetch desnecessário
-let localMusicsCache: Music[] | null = null;
 let localRepertoireCache: RepertoireItem[] | null = null;
 let cacheTimestamp = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const CACHE_DURATION = process.env.NODE_ENV === 'production' ? 2 * 60 * 1000 : 5 * 60 * 1000; // 2 min produção, 5 min dev
+
+// Função para invalidar cache local
+function invalidateLocalCache() {
+  localRepertoireCache = null;
+  cacheTimestamp = 0;
+}
+
+// Função para forçar refresh dos dados (será definida após fetchData)
 
 export default function AdminPage() {
-  const [musics, setMusics] = useState<Music[]>([]);
   const [repertoire, setRepertoire] = useState<RepertoireItem[]>([]);
   const [selectedMusic, setSelectedMusic] = useState<Music | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showEditForm, setShowEditForm] = useState(false);
   const [showRepertoireForm, setShowRepertoireForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const [generatingRepertoire, setGeneratingRepertoire] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    artist: "",
-    lyrics: "",
-    chords: "",
-    isNewOfWeek: false,
-  });
-  const [editFormData, setEditFormData] = useState({
-    id: "",
-    title: "",
-    artist: "",
-    lyrics: "",
-    chords: "",
-    isNewOfWeek: false,
-  });
   const [repertoireFormData, setRepertoireFormData] = useState({
     musicId: "",
     position: 1,
@@ -107,28 +95,24 @@ export default function AdminPage() {
     fetchData();
   }, [checkAuth]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (forceRefresh = false) => {
     const now = Date.now();
 
-    // Verificar cache local primeiro
-    if (localMusicsCache && localRepertoireCache && now - cacheTimestamp < CACHE_DURATION) {
-      setMusics(localMusicsCache);
+    // Verificar cache local primeiro (a menos que seja um refresh forçado)
+    if (!forceRefresh && localRepertoireCache && now - cacheTimestamp < CACHE_DURATION) {
       setRepertoire(localRepertoireCache);
       setLoading(false);
       return;
     }
 
     try {
-      const [musicsResponse, repertoireResponse] = await Promise.all([
-        fetch("/api/musics"),
-        fetch("/api/repertoire"),
-      ]);
-
-      if (musicsResponse.ok) {
-        const musicsData = await musicsResponse.json();
-        setMusics(musicsData);
-        localMusicsCache = musicsData;
+      // Headers para forçar refresh quando necessário
+      const headers: HeadersInit = {};
+      if (forceRefresh) {
+        headers['Cache-Control'] = 'no-cache';
       }
+
+      const repertoireResponse = await fetch("/api/repertoire", { headers });
 
       if (repertoireResponse.ok) {
         const repertoireData = await repertoireResponse.json();
@@ -138,12 +122,18 @@ export default function AdminPage() {
 
       // Atualizar timestamp do cache
       cacheTimestamp = now;
-    } catch {
-      console.error("Erro ao carregar dados");
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Função para forçar refresh dos dados
+  const forceRefresh = useCallback(() => {
+    invalidateLocalCache();
+    return fetchData(true);
+  }, [fetchData]);
 
   const handleLogout = async () => {
     try {
@@ -151,64 +141,6 @@ export default function AdminPage() {
       router.push("/login");
     } catch {
       console.error("Erro ao fazer logout");
-    }
-  };
-
-  // Função otimizada para verificar duplicatas
-  const checkDuplicateMusic = useCallback((
-    title: string,
-    artist: string,
-    excludeId?: string
-  ) => {
-    return musics.find(
-      (music) =>
-        music.id !== excludeId &&
-        music.title.toLowerCase() === title.toLowerCase() &&
-        (music.artist || "").toLowerCase() === (artist || "").toLowerCase()
-    );
-  }, [musics]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormLoading(true);
-    setErrorMessage("");
-
-    try {
-      const response = await fetch("/api/musics", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        setFormData({
-          title: "",
-          artist: "",
-          lyrics: "",
-          chords: "",
-          isNewOfWeek: false,
-        });
-        setShowAddForm(false);
-        
-        // Atualizar cache local imediatamente
-        const newMusic = await response.json();
-        setMusics(prev => [newMusic, ...prev]);
-        localMusicsCache = [newMusic, ...(localMusicsCache || [])];
-        
-        toast.success("Música adicionada com sucesso!");
-      } else {
-        const errorData = await response.json();
-        setErrorMessage(errorData.message || "Erro ao adicionar música");
-        toast.error(errorData.message || "Erro ao adicionar música");
-      }
-    } catch (error) {
-      console.error("Erro ao adicionar música:", error);
-      setErrorMessage("Erro de conexão. Tente novamente.");
-      toast.error("Erro de conexão. Tente novamente.");
-    } finally {
-      setFormLoading(false);
     }
   };
 
@@ -245,105 +177,6 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Erro ao adicionar ao repertório:", error);
       toast.error("Erro ao adicionar ao repertório");
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleDeleteMusic = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta música?")) return;
-
-    try {
-      const response = await fetch(`/api/musics?id=${id}`, {
-        method: "DELETE",
-      });
-      if (response.ok) {
-        // Atualizar cache local imediatamente
-        setMusics(prev => prev.filter(music => music.id !== id));
-        localMusicsCache = (localMusicsCache || []).filter(music => music.id !== id);
-        
-        // Remover do repertório se estiver lá
-        setRepertoire(prev => prev.filter(item => item.music.id !== id));
-        localRepertoireCache = (localRepertoireCache || []).filter(item => item.music.id !== id);
-        
-        toast.success("Música removida com sucesso!");
-      } else {
-        toast.error("Erro ao remover música");
-      }
-    } catch (error) {
-      console.error("Erro ao remover música:", error);
-      toast.error("Erro ao remover música");
-    }
-  };
-
-  const handleEditMusic = (music: Music) => {
-    setEditFormData({
-      id: music.id,
-      title: music.title,
-      artist: music.artist || "",
-      lyrics: music.lyrics,
-      chords: music.chords || "",
-      isNewOfWeek: music.isNewOfWeek,
-    });
-    setShowEditForm(true);
-  };
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormLoading(true);
-    setErrorMessage("");
-
-    try {
-      const response = await fetch("/api/musics", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(editFormData),
-      });
-
-      if (response.ok) {
-        const updatedMusic = await response.json();
-        
-        // Atualizar cache local imediatamente
-        setMusics(prev => prev.map(music => 
-          music.id === updatedMusic.id ? updatedMusic : music
-        ));
-        localMusicsCache = (localMusicsCache || []).map(music => 
-          music.id === updatedMusic.id ? updatedMusic : music
-        );
-        
-        // Atualizar no repertório se estiver lá
-        setRepertoire(prev => prev.map(item => 
-          item.music.id === updatedMusic.id 
-            ? { ...item, music: updatedMusic }
-            : item
-        ));
-        localRepertoireCache = (localRepertoireCache || []).map(item => 
-          item.music.id === updatedMusic.id 
-            ? { ...item, music: updatedMusic }
-            : item
-        );
-        
-        setEditFormData({
-          id: "",
-          title: "",
-          artist: "",
-          lyrics: "",
-          chords: "",
-          isNewOfWeek: false,
-        });
-        setShowEditForm(false);
-        toast.success("Música editada com sucesso!");
-      } else {
-        const errorData = await response.json();
-        setErrorMessage(errorData.message || "Erro ao editar música");
-        toast.error(errorData.message || "Erro ao editar música");
-      }
-    } catch (error) {
-      console.error("Erro ao editar música:", error);
-      setErrorMessage("Erro de conexão. Tente novamente.");
-      toast.error("Erro de conexão. Tente novamente.");
     } finally {
       setFormLoading(false);
     }
@@ -413,7 +246,7 @@ export default function AdminPage() {
         }
         
         // Recarregar dados para garantir sincronização
-        fetchData();
+        setTimeout(() => fetchData(true), 100);
       } else {
         const errorData = await response.json();
         toast.error(errorData.message || "Erro ao gerar repertório");
@@ -426,12 +259,36 @@ export default function AdminPage() {
     }
   };
 
-  // Memoização das músicas filtradas para o select
-  const availableMusicsForRepertoire = useMemo(() => {
-    return musics.filter(music => 
-      !repertoire.some(item => item.music.id === music.id)
-    );
-  }, [musics, repertoire]);
+  // Função para buscar músicas disponíveis para o repertório
+  const [availableMusics, setAvailableMusics] = useState<Music[]>([]);
+  
+  const fetchAvailableMusics = useCallback(async () => {
+    try {
+      const response = await fetch("/api/musics");
+      if (response.ok) {
+        const musicsData = await response.json();
+        // Filtrar músicas que não estão no repertório
+        const available = musicsData.filter((music: Music) => 
+          !repertoire.some(item => item.music.id === music.id)
+        );
+        setAvailableMusics(available);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar músicas disponíveis:", error);
+    }
+  }, [repertoire]);
+
+  // Buscar músicas disponíveis quando o repertório mudar
+  useEffect(() => {
+    if (repertoire.length > 0) {
+      fetchAvailableMusics();
+    }
+  }, [repertoire, fetchAvailableMusics]);
+
+  // Adicionar botão de refresh manual
+  const handleManualRefresh = () => {
+    fetchData(true);
+  };
 
   if (loading) {
     return (
@@ -459,233 +316,78 @@ export default function AdminPage() {
                   Painel Administrativo
                 </h1>
                 <p className="text-sm sm:text-base text-muted-foreground">
-                  Gerencie músicas e repertório
+                  Gerencie o repertório semanal
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={handleLogout}
-              className="w-full sm:w-auto"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={handleManualRefresh}
+                className="w-full sm:w-auto"
+              >
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                Atualizar
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className="w-full sm:w-auto"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-6 sm:py-8">
-        <div className="grid gap-6 sm:gap-8 lg:grid-cols-2">
-          {/* Músicas Section */}
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h2 className="text-xl sm:text-2xl font-semibold flex items-center space-x-2">
-                <Music className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span>Músicas ({musics.length})</span>
-              </h2>
-              <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-                <DialogTrigger asChild>
-                  <Button className="w-full sm:w-auto">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar Música
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-lg md:max-w-xl lg:max-w-2xl sm:max-h-[calc(100vh-4rem)] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center space-x-2">
-                      <Plus className="w-5 h-5" />
-                      <span>Adicionar Nova Música</span>
-                    </DialogTitle>
-                  </DialogHeader>
-                  <form
-                    onSubmit={handleSubmit}
-                    className="space-y-4 sm:space-y-6"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="title">Título *</Label>
-                        <Input
-                          id="title"
-                          value={formData.title}
-                          onChange={(e) =>
-                            setFormData({ ...formData, title: e.target.value })
-                          }
-                          required
-                          placeholder="Digite o título da música"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="artist">Artista</Label>
-                        <Input
-                          id="artist"
-                          value={formData.artist}
-                          onChange={(e) =>
-                            setFormData({ ...formData, artist: e.target.value })
-                          }
-                          placeholder="Digite o nome do artista"
-                        />
-                      </div>
+        {/* Repertório Section - Layout otimizado para desktop */}
+        <div className="max-w-6xl mx-auto">
+          {/* Header da seção com melhor organização */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 mb-8 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center space-x-4 mb-3">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
+                    <FileText className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                      Repertório Semanal
+                    </h2>
+                    <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">
+                      Gerencie as músicas que serão cantadas esta semana
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Estatísticas rápidas */}
+                {repertoire.length > 0 && (
+                  <div className="flex flex-wrap gap-4 mt-4">
+                    <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>{repertoire.length} músicas no repertório</span>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="lyrics">Letra *</Label>
-                      <Textarea
-                        id="lyrics"
-                        value={formData.lyrics}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lyrics: e.target.value })
-                        }
-                        required
-                        rows={6}
-                        placeholder="Digite a letra da música..."
-                        className="resize-none"
-                      />
+                    <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span>{repertoire.filter(item => item.music.isNewOfWeek).length} nova da semana</span>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="chords">Cifra</Label>
-                      <Textarea
-                        id="chords"
-                        value={formData.chords}
-                        onChange={(e) =>
-                          setFormData({ ...formData, chords: e.target.value })
-                        }
-                        rows={4}
-                        placeholder="Digite a cifra da música..."
-                        className="resize-none font-mono text-sm"
-                      />
+                    <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span>{repertoire.filter(item => item.isManual).length} adições manuais</span>
                     </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="isNewOfWeek"
-                        checked={formData.isNewOfWeek}
-                        onCheckedChange={(checked) =>
-                          setFormData({
-                            ...formData,
-                            isNewOfWeek: checked as boolean,
-                          })
-                        }
-                      />
-                      <Label
-                        htmlFor="isNewOfWeek"
-                        className="flex items-center space-x-1"
-                      >
-                        <Star className="w-4 h-4" />
-                        <span>Música nova da semana</span>
-                      </Label>
-                    </div>
-
-                    {errorMessage && (
-                      <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                        {errorMessage}
-                      </div>
-                    )}
-
-                    <div className="flex flex-col-reverse sm:flex-row justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-2 pt-4 sticky bottom-0 bg-background pb-2 sm:pb-0">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowAddForm(false)}
-                        className="w-full sm:w-auto"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={formLoading}
-                        className="w-full sm:w-auto"
-                      >
-                        {formLoading ? "Adicionando..." : "Adicionar Música"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            <div className="grid gap-3  sm:gap-4">
-              {musics.map((music) => (
-                <Card
-                  key={music.id}
-                  className="group hover:shadow-lg transition-all"
-                >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                          {music.title}
-                        </h3>
-                        {music.artist && (
-                          <p className="text-sm text-muted-foreground truncate mt-1">
-                            {music.artist}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2 flex-shrink-0">
-                        {music.isNewOfWeek && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                            <Star className="w-3 h-3 mr-1" />
-                            Nova
-                          </span>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewMusic(music)}
-                          className="h-8 px-3"
-                        >
-                          <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                          <span className="hidden sm:inline">Ver</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditMusic(music)}
-                          className="h-8 px-3"
-                        >
-                          <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span className="hidden sm:inline">Editar</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteMusic(music.id)}
-                          className="h-8 px-3 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                        </Button>
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {music.lyrics.split("\n").slice(0, 2).join("\n")}
-                        {music.lyrics.split("\n").length > 2 && "..."}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Repertório Section */}
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h2 className="text-xl sm:text-2xl font-semibold flex items-center space-x-2">
-                <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span>Repertório Semanal ({repertoire.length})</span>
-              </h2>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
                 <Button
                   variant="outline"
                   onClick={handleGenerateRepertoire}
                   disabled={generatingRepertoire}
-                  className="w-full sm:w-auto"
+                  className="h-11 px-6 text-base font-medium"
                 >
                   {generatingRepertoire ? (
                     <>
@@ -694,7 +396,7 @@ export default function AdminPage() {
                     </>
                   ) : (
                     <>
-                      <Calendar className="w-4 h-4 mr-2" />
+                      <Calendar className="w-5 h-5 mr-2" />
                       Gerar Automático
                     </>
                   )}
@@ -704,21 +406,21 @@ export default function AdminPage() {
                   onOpenChange={setShowRepertoireForm}
                 >
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto">
-                      <Plus className="w-4 h-4 mr-2" />
+                    <Button className="h-11 px-6 text-base font-medium">
+                      <Plus className="w-5 h-5 mr-2" />
                       Adicionar Manual
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-md sm:max-h-[calc(100vh-4rem)] overflow-y-auto">
+                  <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-lg sm:max-h-[calc(100vh-4rem)] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle className="flex items-center space-x-2">
-                        <Plus className="w-5 h-5" />
+                      <DialogTitle className="flex items-center space-x-2 text-xl">
+                        <Plus className="w-6 h-6" />
                         <span>Adicionar ao Repertório</span>
                       </DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleRepertoireSubmit} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="musicId">Música *</Label>
+                    <form onSubmit={handleRepertoireSubmit} className="space-y-6">
+                      <div className="space-y-3">
+                        <Label htmlFor="musicId" className="text-base font-medium">Música *</Label>
                         <select
                           id="musicId"
                           value={repertoireFormData.musicId}
@@ -729,27 +431,34 @@ export default function AdminPage() {
                             })
                           }
                           required
-                          className="w-full p-2 border rounded-md text-gray-500"
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         >
                           <option className="text-gray-500" value="">
                             Selecione uma música
                           </option>
-                          {availableMusicsForRepertoire.map((music) => (
+                          {availableMusics.map((music) => (
                             <option
-                              className="text-gray-500"
+                              className="text-gray-700 dark:text-gray-300"
                               key={music.id}
                               value={music.id}
                             >
-                              {music.title}
-                              {music.artist && ` - ${music.artist}`}
+                              {music.title.length > 50 
+                                ? `${music.title.substring(0, 50)}...` 
+                                : music.title
+                              }
+                              {music.artist && ` - ${
+                                music.artist.length > 30 
+                                  ? `${music.artist.substring(0, 30)}...` 
+                                  : music.artist
+                              }`}
                               {music.isNewOfWeek && " ⭐ (Nova da Semana)"}
                             </option>
                           ))}
                         </select>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="position">Posição *</Label>
+                      <div className="space-y-3">
+                        <Label htmlFor="position" className="text-base font-medium">Posição *</Label>
                         <Input
                           id="position"
                           type="number"
@@ -763,14 +472,14 @@ export default function AdminPage() {
                             })
                           }
                           required
+                          className="h-11 text-base"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          💡 A música nova da semana aparecerá automaticamente em
-                          primeiro lugar
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          💡 A música nova da semana aparecerá automaticamente em primeiro lugar
                         </p>
                       </div>
 
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-3">
                         <Checkbox
                           id="isManual"
                           checked={repertoireFormData.isManual}
@@ -780,23 +489,24 @@ export default function AdminPage() {
                               isManual: checked as boolean,
                             })
                           }
+                          className="w-5 h-5"
                         />
-                        <Label htmlFor="isManual">Adição manual</Label>
+                        <Label htmlFor="isManual" className="text-base font-medium">Adição manual</Label>
                       </div>
 
-                      <div className="flex flex-col-reverse sm:flex-row justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-2 pt-4 sticky bottom-0 bg-background pb-2 sm:pb-0">
+                      <div className="flex flex-col-reverse sm:flex-row justify-end space-y-3 space-y-reverse sm:space-y-0 sm:space-x-3 pt-6">
                         <Button
                           type="button"
                           variant="outline"
                           onClick={() => setShowRepertoireForm(false)}
-                          className="w-full sm:w-auto"
+                          className="h-11 px-6 text-base font-medium"
                         >
                           Cancelar
                         </Button>
                         <Button
                           type="submit"
                           disabled={formLoading}
-                          className="w-full sm:w-auto"
+                          className="h-11 px-6 text-base font-medium"
                         >
                           {formLoading ? "Adicionando..." : "Adicionar"}
                         </Button>
@@ -806,111 +516,196 @@ export default function AdminPage() {
                 </Dialog>
               </div>
             </div>
+          </div>
 
-            {/* Indicador de status do repertório */}
-            {repertoire.length === 0 && (
-              <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
-                <div className="flex items-center space-x-2 text-sm text-yellow-800 dark:text-yellow-200">
-                  <FileText className="w-4 h-4" />
-                  <span>
-                    <strong>Repertório vazio</strong> - Use "Gerar Automático" para criar um novo repertório
-                  </span>
+          {/* Indicadores de status com melhor design */}
+          {repertoire.length === 0 && (
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-8 mb-8 text-center">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
+                  <FileText className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-2">
+                    Repertório vazio
+                  </h3>
+                  <p className="text-lg text-yellow-700 dark:text-yellow-300 max-w-md mx-auto">
+                    Use "Gerar Automático" para criar um novo repertório ou adicione músicas manualmente
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Indicador de ordenação */}
-            {repertoire.length > 0 && (
-              <div className="p-3 rounded-lg new-week-music-indicator">
-                <div className="flex items-center space-x-2 text-sm">
-                  <Star className="w-4 h-4" />
-                  <span>
-                    <strong>Música nova da semana</strong> aparece
-                    automaticamente em primeiro lugar no repertório
-                  </span>
+          {repertoire.length > 0 && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 mb-8">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                  <Star className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200">
+                    Ordenação automática
+                  </h3>
+                  <p className="text-blue-700 dark:text-blue-300">
+                    A música nova da semana aparece automaticamente em primeiro lugar no repertório
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            <div className="grid gap-3 sm:gap-4">
-              {repertoire.map((item) => (
-                <Card
-                  key={item.id}
-                  className={`group hover:shadow-lg transition-all ${
-                    item.music.isNewOfWeek
-                      ? "new-week-music-card"
-                      : "hover:shadow-lg"
-                  }`}
-                >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full font-semibold text-xs sm:text-sm ${
-                            item.music.isNewOfWeek
-                              ? "new-week-music-icon"
-                              : "bg-primary/10 text-primary"
-                          }`}
-                        >
-                          {item.music.isNewOfWeek ? (
-                            <Star className="w-3 h-3 sm:w-4 sm:h-4" />
-                          ) : (
-                            item.position
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3
-                            className={`text-base sm:text-lg font-semibold transition-colors truncate ${
-                              item.music.isNewOfWeek
-                                ? "new-week-music-title group-hover:text-green-600 dark:group-hover:text-green-300"
-                                : "text-foreground group-hover:text-primary"
-                            }`}
-                          >
-                            {item.music.title}
-                          </h3>
-                          {item.music.artist && (
-                            <p className="text-sm text-muted-foreground truncate mt-1">
-                              {item.music.artist}
-                            </p>
-                          )}
-                        </div>
+          {/* Lista do repertório com cards melhorados */}
+          <div className="space-y-4">
+            {repertoire.map((item, index) => (
+              <Card
+                key={item.id}
+                className={`group hover:shadow-xl transition-all duration-300 border-2 ${
+                  item.music.isNewOfWeek
+                    ? "border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10"
+                    : "border-gray-200 dark:border-gray-800 hover:border-primary/30"
+                }`}
+              >
+                <CardHeader className="pb-6">
+                  <CardTitle className="flex flex-col xl:flex-row xl:items-center xl:justify-between space-y-4 xl:space-y-0">
+                    <div className="flex items-center space-x-6">
+                      <div
+                        className={`flex items-center justify-center w-14 h-14 rounded-2xl font-bold text-xl ${
+                          item.music.isNewOfWeek
+                            ? "bg-gradient-to-br from-green-100 to-emerald-100 text-green-800 dark:from-green-900/30 dark:to-emerald-900/30 dark:text-green-300 shadow-lg"
+                            : "bg-gradient-to-br from-primary/10 to-secondary/10 text-primary shadow-lg"
+                        }`}
+                      >
+                        {item.music.isNewOfWeek ? (
+                          <Star className="w-7 h-7" />
+                        ) : (
+                          item.position
+                        )}
                       </div>
-                      <div className="flex items-center space-x-2 flex-shrink-0">
+                      <div className="flex-1 min-w-0">
+                        <h3
+                          className={`text-2xl font-bold transition-colors truncate ${
+                            item.music.isNewOfWeek
+                              ? "text-green-700 dark:text-green-300"
+                              : "text-gray-900 dark:text-white"
+                          }`}
+                          title={item.music.title}
+                        >
+                          {item.music.title.length > 40 
+                            ? `${item.music.title.substring(0, 40)}...` 
+                            : item.music.title
+                          }
+                        </h3>
+                        {item.music.artist && (
+                          <p className="text-lg text-gray-600 dark:text-gray-400 mt-2 truncate" title={item.music.artist}>
+                            {item.music.artist.length > 35 
+                              ? `${item.music.artist.substring(0, 35)}...` 
+                              : item.music.artist
+                            }
+                          </p>
+                        )}
                         {item.music.isNewOfWeek && (
-                          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold new-week-music-badge">
-                            <Star className="w-4 h-4 mr-1.5" />
+                          <div className="flex items-center space-x-2 mt-3">
+                            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                              <Star className="w-4 h-4 mr-1.5" />
+                              Nova da Semana
+                            </span>
+                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                              ⭐ Aparece automaticamente em primeiro lugar
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3">
+                      <div className="flex flex-wrap gap-2">
+                        {item.music.isNewOfWeek && (
+                          <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 dark:from-green-900/30 dark:to-emerald-900/30 dark:text-green-300 border border-green-200 dark:border-green-800">
+                            <Star className="w-4 h-4 mr-2" />
                             Nova da Semana
                           </span>
                         )}
                         {item.isManual && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                          <span className="inline-flex items-center px-3 py-2 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                             Manual
                           </span>
                         )}
+                      </div>
+                      
+                      <div className="flex gap-3">
                         <Button
                           variant="outline"
-                          size="sm"
+                          size="lg"
                           onClick={() => setSwapModal({ open: true, item })}
-                          className="h-8 px-3"
+                          className="h-11 px-6 text-base font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
                         >
                           Trocar
                         </Button>
                         <Button
                           variant="outline"
-                          size="sm"
+                          size="lg"
                           onClick={() => handleViewMusic(item.music)}
-                          className="h-8 px-3"
+                          className="h-11 px-6 text-base font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
                         >
-                          <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                          <span className="hidden sm:inline">Ver</span>
+                          <Eye className="w-5 h-5 mr-2" />
+                          Ver
                         </Button>
                       </div>
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            ))}
           </div>
+
+          {/* Estatísticas do repertório com design melhorado */}
+          {repertoire.length > 0 && (
+            <div className="mt-12">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">
+                Resumo do Repertório
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-2xl border border-blue-200 dark:border-blue-800 shadow-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Total de músicas</p>
+                      <p className="text-3xl font-bold text-blue-800 dark:text-blue-200">{repertoire.length}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-6 rounded-2xl border border-green-200 dark:border-green-800 shadow-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+                      <Star className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-green-600 dark:text-green-400 font-medium">Música nova da semana</p>
+                      <p className="text-3xl font-bold text-green-800 dark:text-green-200">
+                        {repertoire.filter(item => item.music.isNewOfWeek).length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 p-6 rounded-2xl border border-purple-200 dark:border-purple-800 shadow-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-purple-600 dark:text-purple-400 font-medium">Adições manuais</p>
+                      <p className="text-3xl font-bold text-purple-800 dark:text-purple-200">
+                        {repertoire.filter(item => item.isManual).length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -920,119 +715,6 @@ export default function AdminPage() {
         open={!!selectedMusic}
         onOpenChange={(open) => !open && setSelectedMusic(null)}
       />
-
-      {/* Modal de Edição de Música */}
-      <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
-        <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-lg md:max-w-xl lg:max-w-2xl sm:max-h-[calc(100vh-4rem)] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Edit className="w-5 h-5" />
-              <span>Editar Música</span>
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleEditSubmit} className="space-y-4 sm:space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-title">Título *</Label>
-                <Input
-                  id="edit-title"
-                  value={editFormData.title}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, title: e.target.value })
-                  }
-                  required
-                  placeholder="Digite o título da música"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-artist">Artista</Label>
-                <Input
-                  id="edit-artist"
-                  value={editFormData.artist}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, artist: e.target.value })
-                  }
-                  placeholder="Digite o nome do artista"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-lyrics">Letra *</Label>
-              <Textarea
-                id="edit-lyrics"
-                value={editFormData.lyrics}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, lyrics: e.target.value })
-                }
-                required
-                rows={6}
-                placeholder="Digite a letra da música..."
-                className="resize-none"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-chords">Cifra</Label>
-              <Textarea
-                id="edit-chords"
-                value={editFormData.chords}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, chords: e.target.value })
-                }
-                rows={4}
-                placeholder="Digite a cifra da música..."
-                className="resize-none font-mono text-sm"
-              />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="edit-isNewOfWeek"
-                checked={editFormData.isNewOfWeek}
-                onCheckedChange={(checked) =>
-                  setEditFormData({
-                    ...editFormData,
-                    isNewOfWeek: checked as boolean,
-                  })
-                }
-              />
-              <Label
-                htmlFor="edit-isNewOfWeek"
-                className="flex items-center space-x-1"
-              >
-                <Star className="w-4 h-4" />
-                <span>Música nova da semana</span>
-              </Label>
-            </div>
-
-            {errorMessage && (
-              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                {errorMessage}
-              </div>
-            )}
-
-            <div className="flex flex-col-reverse sm:flex-row justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-2 pt-4 sticky bottom-0 bg-background pb-2 sm:pb-0">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowEditForm(false)}
-                className="w-full sm:w-auto"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={formLoading}
-                className="w-full sm:w-auto"
-              >
-                {formLoading ? "Salvando..." : "Salvar Alterações"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Modal de troca de música */}
       <Dialog
@@ -1055,12 +737,19 @@ export default function AdminPage() {
                 className="w-full p-2 border rounded-md text-gray-500"
               >
                 <option value="">Selecione uma música</option>
-                {musics
-                  .filter((m) => m.id !== swapModal.item?.music.id)
+                {availableMusics
+                  .filter((music) => music.id !== swapModal.item?.music.id)
                   .map((music) => (
                     <option key={music.id} value={music.id}>
-                      {music.title}
-                      {music.artist && ` - ${music.artist}`}
+                      {music.title.length > 50 
+                        ? `${music.title.substring(0, 50)}...` 
+                        : music.title
+                      }
+                      {music.artist && ` - ${
+                        music.artist.length > 30 
+                          ? `${music.artist.substring(0, 30)}...` 
+                          : music.artist
+                      }`}
                       {music.isNewOfWeek && " ⭐ (Nova da Semana)"}
                     </option>
                   ))}

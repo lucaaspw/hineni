@@ -6,5 +6,52 @@
     "src/app/api/**/*.ts": {
       "maxDuration": 30
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=120, s-maxage=300, stale-while-revalidate=60"
+        },
+        {
+          "key": "X-Response-Time",
+          "value": "0ms"
+        }
+      ]
+    },
+    {
+      "source": "/api/musics",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=120, s-maxage=300, stale-while-revalidate=60"
+        },
+        {
+          "key": "X-API-Version",
+          "value": "1.0"
+        }
+      ]
+    },
+    {
+      "source": "/api/repertoire",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=120, s-maxage=300, stale-while-revalidate=60"
+        },
+        {
+          "key": "X-API-Version",
+          "value": "1.0"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/sw.js",
+      "destination": "/_next/static/sw.js"
+    }
+  ]
 }
