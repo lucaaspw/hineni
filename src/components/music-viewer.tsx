@@ -6,9 +6,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Music, FileText, Guitar } from "lucide-react";
+import { Music, FileText, Guitar, X } from "lucide-react";
 import { disableBodyScroll, enableBodyScroll } from "@/lib/utils";
 
 interface Music {
@@ -50,8 +51,15 @@ export const MusicViewer = memo(
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl sm:max-h-[calc(100vh-2rem)] p-0 overflow-hidden">
-          <DialogHeader className="px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6 pb-2 sm:pb-3 md:pb-4 flex-shrink-0">
+        <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl sm:max-h-[calc(100vh-2rem)] p-0 overflow-hidden" showCloseButton={false}>
+          <DialogHeader className="px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6 pb-2 sm:pb-3 md:pb-4 flex-shrink-0 relative">
+            {/* Botão de fechar que cobre todo o header */}
+            <DialogClose className="absolute inset-0 z-10 flex items-center justify-end p-3 sm:p-4 md:p-6 bg-transparent hover:bg-muted/20 transition-colors rounded-t-lg">
+              <div className="bg-background/90 backdrop-blur-sm rounded-full p-2 shadow-lg border">
+                <X className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
+              </div>
+            </DialogClose>
+            
             <DialogTitle className="text-base sm:text-lg md:text-xl font-bold text-foreground flex items-center space-x-2 pr-6 sm:pr-8">
               <Music className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-primary" />
               <span className="truncate">{music.title}</span>

@@ -127,6 +127,13 @@ export async function POST(request: NextRequest) {
       repertoire: createdRepertoire,
       total: createdRepertoire.length,
       weekStart: weekStart.toISOString().split('T')[0], // Data formatada
+    }, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        "X-Cache-Invalidated": "true",
+      },
     });
 
   } catch (error) {

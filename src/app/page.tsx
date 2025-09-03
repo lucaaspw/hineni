@@ -222,17 +222,7 @@ export default function Home() {
             <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
               Músicas selecionadas com carinho para esta semana de louvor
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 text-sm text-muted-foreground">
-              <div className="flex items-center space-x-1">
-                <Calendar className="w-4 h-4" />
-                <span>Atualizado semanalmente</span>
-              </div>
-              <div className="hidden sm:block w-1 h-1 bg-muted-foreground rounded-full"></div>
-              <div className="flex items-center space-x-1">
-                <Star className="w-4 h-4" />
-                <span>6 músicas selecionadas</span>
-              </div>
-            </div>
+            
           </div>
         </div>
       </div>

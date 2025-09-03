@@ -276,7 +276,14 @@ export async function PUT(request: NextRequest) {
     // Invalidar cache apenas se necessário
     musicsCache = null;
 
-    return NextResponse.json(music);
+    return NextResponse.json(music, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        "X-Cache-Invalidated": "true",
+      },
+    });
   } catch (error) {
     console.error("Erro ao atualizar música:", error);
     return NextResponse.json(
@@ -311,7 +318,14 @@ export async function DELETE(request: NextRequest) {
     // Invalidar cache
     musicsCache = null;
 
-    return NextResponse.json({ message: "Música removida com sucesso" });
+    return NextResponse.json({ message: "Música removida com sucesso" }, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        "X-Cache-Invalidated": "true",
+      },
+    });
   } catch (error) {
     console.error("Erro ao remover música:", error);
     return NextResponse.json(

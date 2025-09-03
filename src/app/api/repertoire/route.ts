@@ -6,6 +6,13 @@ let repertoireCache: unknown[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
 
+// Função para invalidar cache
+function invalidateRepertoireCache() {
+  repertoireCache = null;
+  cacheTimestamp = 0;
+  console.log("🗑️ Cache do repertório invalidado");
+}
+
 // GET - Listar repertório
 export async function GET() {
   try {
@@ -134,7 +141,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Invalidar cache
-    repertoireCache = null;
+    invalidateRepertoireCache();
 
     return NextResponse.json(repertoireItem, { status: 201 });
   } catch (error) {
@@ -149,25 +156,51 @@ export async function POST(request: NextRequest) {
 // PUT - Trocar música do repertório
 export async function PUT(request: NextRequest) {
   try {
-    const { id, musicId } = await request.json();
+    const body = await request.json();
+    console.log("🔄 PUT /api/repertoire - Dados recebidos:", body);
+    
+    const { id, musicId } = body;
     if (!id || !musicId) {
+      console.log("❌ Dados inválidos:", { id, musicId });
       return NextResponse.json(
         { message: "ID do item e ID da música são obrigatórios" },
         { status: 400 }
       );
     }
 
+    console.log("✅ Dados válidos, verificando música...");
+
     // Query otimizada para verificar se a música existe
     const music = await prisma.music.findUnique({ 
       where: { id: musicId },
-      select: { id: true },
+      select: { id: true, title: true },
     });
+    
     if (!music) {
+      console.log("❌ Música não encontrada:", musicId);
       return NextResponse.json(
         { message: "Música não encontrada" },
         { status: 404 }
       );
     }
+
+    console.log("✅ Música encontrada:", music.title);
+
+    // Verificar se o item do repertório existe
+    const existingItem = await prisma.weeklyRepertoire.findUnique({
+      where: { id },
+      select: { id: true, position: true, musicId: true },
+    });
+
+    if (!existingItem) {
+      console.log("❌ Item do repertório não encontrado:", id);
+      return NextResponse.json(
+        { message: "Item do repertório não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    console.log("✅ Item do repertório encontrado:", existingItem);
 
     // Atualizar o item do repertório com seleção otimizada
     const updated = await prisma.weeklyRepertoire.update({
@@ -191,12 +224,21 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    // Invalidar cache
-    repertoireCache = null;
+    console.log("✅ Item atualizado com sucesso:", updated);
 
-    return NextResponse.json(updated);
+    // Invalidar cache
+    invalidateRepertoireCache();
+
+    return NextResponse.json(updated, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        "X-Cache-Invalidated": "true",
+      },
+    });
   } catch (error) {
-    console.error("Erro ao trocar música do repertório:", error);
+    console.error("❌ Erro ao trocar música do repertório:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor" },
       { status: 500 }
@@ -222,7 +264,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     // Invalidar cache
-    repertoireCache = null;
+    invalidateRepertoireCache();
 
     return NextResponse.json({ message: "Item removido com sucesso" });
   } catch (error) {
