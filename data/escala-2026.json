@@ -5,17 +5,17 @@
   },
   {
     "date": "2026-01-11",
-    "people": ["Israel", "Ingrid", "Beatriz", "Luciano"]
+    "people": ["Sarah", "Anna Bia", "Beatriz", "Luciano"]
   },
-  { "date": "2026-01-18", "people": ["Letícia", "Sarah", "Anna Bia", "Fábio"] },
+  { "date": "2026-01-18", "people": ["Letícia", "Israel", "Ingrid", "Fábio"] },
   {
     "date": "2026-01-25",
-    "people": ["Anna Bia", "Israel", "Letícia", "Luciano"]
+    "people": ["Anna Bia", "Israel", "Letícia", "Fábio"]
   },
 
   {
     "date": "2026-02-01",
-    "people": ["Anna Júlia", "Ingrid", "Beatriz", "Fábio"]
+    "people": ["Anna Júlia", "Ingrid", "Beatriz", "Luciano"]
   },
   { "date": "2026-02-08", "people": ["Beatriz", "Laura", "Sarah", "Luciano"] },
   { "date": "2026-02-15", "people": ["Anna Bia", "Ingrid", "Sarah", "Fábio"] },
@@ -26,11 +26,11 @@
 
   {
     "date": "2026-03-01",
-    "people": ["Beatriz", "Israel", "Anna Júlia", "Fábio"]
+    "people": ["Beatriz", "Israel", "Anna Júlia", "Luciano"]
   },
   {
     "date": "2026-03-08",
-    "people": ["Anna Bia", "Laura", "Ingrid", "Luciano"]
+    "people": ["Anna Bia", "Laura", "Ingrid", "Fábio"]
   },
   {
     "date": "2026-03-15",
@@ -47,12 +47,12 @@
 
   {
     "date": "2026-04-05",
-    "people": ["Anna Júlia", "Laura", "Sarah", "Luciano"]
+    "people": ["Anna Júlia", "Laura", "Sarah", "Fábio"]
   },
-  { "date": "2026-04-12", "people": ["Beatriz", "Sarah", "Israel", "Fábio"] },
+  { "date": "2026-04-12", "people": ["Beatriz", "Sarah", "Israel", "Luciano"] },
   {
     "date": "2026-04-19",
-    "people": ["Anna Bia", "Israel", "Ingrid", "Luciano"]
+    "people": ["Anna Bia", "Israel", "Ingrid", "Fábio"]
   },
   {
     "date": "2026-04-26",
@@ -70,11 +70,11 @@
   },
   {
     "date": "2026-05-24",
-    "people": ["Beatriz", "Ingrid", "Anna Bia", "Fábio"]
+    "people": ["Beatriz", "Ingrid", "Anna Bia", "Luciano"]
   },
   {
     "date": "2026-05-31",
-    "people": ["Israel", "Anna Bia", "Sarah", "Luciano"]
+    "people": ["Israel", "Anna Bia", "Sarah", "Fábio"]
   },
 
   {
@@ -107,12 +107,12 @@
     "date": "2026-08-09",
     "people": ["Ingrid", "Letícia", "Anna Júlia", "Luciano"]
   },
-  { "date": "2026-08-16", "people": ["Sarah", "Beatriz", "Laura", "Fábio"] },
+  { "date": "2026-08-16", "people": ["Sarah", "Beatriz", "Laura", "Luciano"] },
   {
     "date": "2026-08-23",
-    "people": ["Israel", "Anna Júlia", "Ingrid", "Luciano"]
+    "people": ["Israel", "Anna Júlia", "Ingrid", "Fábio"]
   },
-  { "date": "2026-08-30", "people": ["Ingrid", "Sarah", "Beatriz", "Fábio"] },
+  { "date": "2026-08-30", "people": ["Ingrid", "Sarah", "Beatriz", "Luciano"] },
 
   {
     "date": "2026-09-06",
@@ -158,10 +158,10 @@
   },
   {
     "date": "2026-12-20",
-    "people": ["Anna Júlia", "Beatriz", "Ingrid", "Fábio"]
+    "people": ["Anna Júlia", "Beatriz", "Ingrid", "Luciano"]
   },
   {
     "date": "2026-12-27",
-    "people": ["Anna Bia", "Anna Júlia", "Israel", "Luciano"]
+    "people": ["Anna Bia", "Anna Júlia", "Israel", "Fábio"]
   }
 ]
