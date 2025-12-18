@@ -211,24 +211,23 @@ export default function Home() {
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/10">
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
-        <div className="relative container mx-auto px-4 py-12 sm:py-16 lg:py-24">
-          <div className="text-center space-y-4 sm:space-y-6 max-w-3xl mx-auto">
-            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary/10 mb-4 sm:mb-6">
-              <Music className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+        <div className="relative container mx-auto px-4 py-6 sm:py-8">
+          <div className="text-center space-y-2 sm:space-y-3 max-w-3xl mx-auto">
+            <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 mb-2 sm:mb-3">
+              <Music className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight px-2">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight px-2">
               Repertório da Semana
             </h1>
-            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
               Músicas selecionadas com carinho para esta semana de louvor
             </p>
-            
           </div>
         </div>
       </div>
 
       {/* Repertoire Section */}
-      <div className="container mx-auto px-4 py-8 sm:py-12">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
         {/* Todas as Músicas */}
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2  lg:grid-cols-3 lg:gap-8">
           {musicGrid}

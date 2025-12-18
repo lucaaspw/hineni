@@ -211,15 +211,15 @@ export default function LouvoresPage() {
     <div className="min-h-[calc(100vh-3.5rem)]">
       {/* Header Section */}
       <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border-b">
-        <div className="container mx-auto px-4 py-8 sm:py-12">
-          <div className="text-center space-y-4 sm:space-y-6 max-w-3xl mx-auto">
-            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary/10 mb-4 sm:mb-6">
-              <Music className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+        <div className="container mx-auto px-4 py-6 sm:py-8">
+          <div className="text-center space-y-2 sm:space-y-3 max-w-3xl mx-auto">
+            <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 mb-2 sm:mb-3">
+              <Music className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">
               Biblioteca de Louvores
             </h1>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
               Explore nossa coleção completa de músicas para adoração
             </p>
           </div>
@@ -227,7 +227,7 @@ export default function LouvoresPage() {
       </div>
 
       {/* Search Section */}
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="container mx-auto px-4 py-4 sm:py-6">
         <SearchInput
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}

@@ -36,7 +36,7 @@ const WeekCard = memo(
               <div className="flex-1 min-w-0 flex items-center gap-2">
                 <Calendar className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
                 <h3 className="text-base sm:text-lg font-semibold transition-colors new-week-music-title group-hover:text-green-600 dark:group-hover:text-green-300">
-                  Esta Semana
+                  Esta Semana {formatDisplayDate(week.date)}
                 </h3>
               </div>
               <div className="flex items-center space-x-2 flex-shrink-0">
@@ -136,15 +136,15 @@ const ScalePage = () => {
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/10">
         <div className="absolute inset-0 bg-grid-white/[0.02] dark:bg-grid-black/[0.02] bg-[size:50px_50px]" />
-        <div className="relative container mx-auto px-4 py-12 sm:py-16 lg:py-24">
-          <div className="text-center space-y-4 sm:space-y-6 max-w-3xl mx-auto">
-            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary/10 mb-4 sm:mb-6">
-              <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+        <div className="relative container mx-auto px-4 py-6 sm:py-8">
+          <div className="text-center space-y-2 sm:space-y-3 max-w-3xl mx-auto">
+            <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 mb-2 sm:mb-3">
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight px-2">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight px-2">
               Escala de Adoração
             </h1>
-            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
               Confira quem estará ministrando nos próximos domingos
             </p>
           </div>
@@ -152,8 +152,8 @@ const ScalePage = () => {
       </div>
 
       {/* Escala Section */}
-      <div className="container mx-auto px-4 py-8 sm:py-12 max-w-6xl">
-        <div className="space-y-8 sm:space-y-12">
+      <div className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
+        <div className="space-y-6 sm:space-y-8">
           {/* Card da semana atual - centralizado e verde */}
           {currentWeek && (
             <div className="flex justify-center">
@@ -164,9 +164,9 @@ const ScalePage = () => {
           {/* Cards das semanas seguintes - grid */}
           {upcomingWeeks.length > 0 && (
             <div>
-              <div className="flex items-center gap-2 mb-6 sm:mb-8">
-                <Users className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-xl sm:text-2xl font-semibold">
+              <div className="flex items-center gap-2 mb-4 sm:mb-6">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <h2 className="text-lg sm:text-xl font-semibold">
                   Próximas Semanas
                 </h2>
               </div>
