@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+import { AUTH_CONFIG } from "@/lib/auth";
 
 interface TokenPayload {
   username: string;
@@ -22,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verificar o token
-    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const decoded = jwt.verify(token, AUTH_CONFIG.jwtSecret) as TokenPayload;
 
     if (!decoded || !decoded.username) {
       return NextResponse.json({ message: "Token inválido" }, { status: 401 });

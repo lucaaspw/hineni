@@ -60,3 +60,17 @@ model Admin {
 
   @@map("admins")
 }
+
+model Scale {
+  id        String   @id @default(cuid())
+  date      DateTime // Data do domingo
+  year      Int      // Ano da escala
+  members   String[] // Array de nomes dos membros (incluindo Lucas sempre)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date]) // Garante que cada domingo tenha apenas uma escala
+  @@index([year]) // Índice para filtros por ano
+  @@index([date]) // Índice para ordenação por data
+  @@map("scales")
+}

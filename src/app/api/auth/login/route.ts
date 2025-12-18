@@ -21,7 +21,10 @@ export async function POST(request: NextRequest) {
 
     const { username, password } = validationResult.data;
 
-    if (verifyCredentials(username, password)) {
+    // Verificar credenciais usando o banco de dados
+    const isValid = await verifyCredentials(username, password);
+
+    if (isValid) {
       // Gerar token JWT
       const token = jwt.sign(
         { username, role: "admin" },

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
+import { AUTH_CONFIG } from "@/lib/auth";
+import { getWeekStart } from "@/lib/utils";
 
 // Middleware para verificar autenticação
 async function verifyAuth(request: NextRequest) {
@@ -11,10 +13,7 @@ async function verifyAuth(request: NextRequest) {
   }
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "fallback-secret"
-    );
+    const decoded = jwt.verify(token, AUTH_CONFIG.jwtSecret);
     return decoded;
   } catch {
     return null;
@@ -28,22 +27,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    console.log("🔄 Iniciando geração automática do repertório...");
-
     // Limpar repertório atual
     await prisma.weeklyRepertoire.deleteMany();
-    console.log("🗑️ Repertório anterior limpo");
 
     // Buscar música nova da semana (se existir)
     const newOfWeekMusic = await prisma.music.findFirst({
       where: { isNewOfWeek: true },
       select: { id: true, title: true },
     });
-
-    console.log(newOfWeekMusic 
-      ? `⭐ Música nova da semana encontrada: ${newOfWeekMusic.title}`
-      : "ℹ️ Nenhuma música nova da semana definida"
-    );
 
     // Buscar outras músicas disponíveis (excluindo a nova da semana)
     const otherMusics = await prisma.music.findMany({
@@ -54,8 +45,6 @@ export async function POST(request: NextRequest) {
       take: 5, // Pegar 5 músicas para preencher o repertório
       select: { id: true, title: true },
     });
-
-    console.log(`📚 ${otherMusics.length} músicas adicionais encontradas`);
 
     // Se não há músicas suficientes, retornar erro
     const totalMusics = (newOfWeekMusic ? 1 : 0) + otherMusics.length;
@@ -71,7 +60,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Preparar dados para o repertório
-    const weekStart = new Date();
+    // Calcular o início da semana (domingo)
+    const weekStart = getWeekStart();
     const repertoireData = [];
 
     // Posição 1: Música nova da semana (se existir)
@@ -82,7 +72,6 @@ export async function POST(request: NextRequest) {
         isManual: false,
         weekStart,
       });
-      console.log(`1️⃣ Posição 1: ${newOfWeekMusic.title} (Nova da Semana)`);
     }
 
     // Posições 2-6: Outras músicas
@@ -96,15 +85,12 @@ export async function POST(request: NextRequest) {
         isManual: false,
         weekStart,
       });
-      console.log(`${position}️⃣ Posição ${position}: ${music.title}`);
     });
 
     // Criar o repertório
     await prisma.weeklyRepertoire.createMany({
       data: repertoireData,
     });
-
-    console.log(`✅ Repertório criado com ${repertoireData.length} músicas`);
 
     // Buscar o repertório criado para retornar
     const createdRepertoire = await prisma.weeklyRepertoire.findMany({
@@ -137,9 +123,14 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("❌ Erro ao gerar repertório:", error);
+    console.error("Erro ao gerar repertório:", error);
     return NextResponse.json(
-      { message: "Erro interno do servidor", error: error instanceof Error ? error.message : "Erro desconhecido" },
+      { 
+        message: "Erro interno do servidor",
+        ...(process.env.NODE_ENV === "development" && { 
+          error: error instanceof Error ? error.message : "Erro desconhecido" 
+        })
+      },
       { status: 500 }
     );
   }

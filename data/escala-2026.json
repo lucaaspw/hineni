@@ -1,0 +1,167 @@
+[
+  {
+    "date": "2026-01-04",
+    "people": ["Anna Bia", "Anna Júlia", "Laura", "Fábio"]
+  },
+  {
+    "date": "2026-01-11",
+    "people": ["Israel", "Ingrid", "Beatriz", "Luciano"]
+  },
+  { "date": "2026-01-18", "people": ["Letícia", "Sarah", "Anna Bia", "Fábio"] },
+  {
+    "date": "2026-01-25",
+    "people": ["Anna Bia", "Israel", "Letícia", "Luciano"]
+  },
+
+  {
+    "date": "2026-02-01",
+    "people": ["Anna Júlia", "Ingrid", "Beatriz", "Fábio"]
+  },
+  { "date": "2026-02-08", "people": ["Beatriz", "Laura", "Sarah", "Luciano"] },
+  { "date": "2026-02-15", "people": ["Anna Bia", "Ingrid", "Sarah", "Fábio"] },
+  {
+    "date": "2026-02-22",
+    "people": ["Anna Júlia", "Laura", "Letícia", "Luciano"]
+  },
+
+  {
+    "date": "2026-03-01",
+    "people": ["Beatriz", "Israel", "Anna Júlia", "Fábio"]
+  },
+  {
+    "date": "2026-03-08",
+    "people": ["Anna Bia", "Laura", "Ingrid", "Luciano"]
+  },
+  {
+    "date": "2026-03-15",
+    "people": ["Anna Júlia", "Israel", "Sarah", "Fábio"]
+  },
+  {
+    "date": "2026-03-22",
+    "people": ["Beatriz", "Ingrid", "Letícia", "Luciano"]
+  },
+  {
+    "date": "2026-03-29",
+    "people": ["Anna Bia", "Letícia", "Ingrid", "Fábio"]
+  },
+
+  {
+    "date": "2026-04-05",
+    "people": ["Anna Júlia", "Laura", "Sarah", "Luciano"]
+  },
+  { "date": "2026-04-12", "people": ["Beatriz", "Sarah", "Israel", "Fábio"] },
+  {
+    "date": "2026-04-19",
+    "people": ["Anna Bia", "Israel", "Ingrid", "Luciano"]
+  },
+  {
+    "date": "2026-04-26",
+    "people": ["Anna Júlia", "Sarah", "Ingrid", "Fábio"]
+  },
+
+  {
+    "date": "2026-05-03",
+    "people": ["Beatriz", "Letícia", "Laura", "Luciano"]
+  },
+  { "date": "2026-05-10", "people": ["Anna Bia", "Sarah", "Laura", "Fábio"] },
+  {
+    "date": "2026-05-17",
+    "people": ["Anna Júlia", "Letícia", "Israel", "Luciano"]
+  },
+  {
+    "date": "2026-05-24",
+    "people": ["Beatriz", "Ingrid", "Anna Bia", "Fábio"]
+  },
+  {
+    "date": "2026-05-31",
+    "people": ["Israel", "Anna Bia", "Sarah", "Luciano"]
+  },
+
+  {
+    "date": "2026-06-07",
+    "people": ["Ingrid", "Anna Júlia", "Sarah", "Fábio"]
+  },
+  {
+    "date": "2026-06-14",
+    "people": ["Laura", "Beatriz", "Letícia", "Luciano"]
+  },
+  {
+    "date": "2026-06-21",
+    "people": ["Israel", "Anna Júlia", "Letícia", "Fábio"]
+  },
+  { "date": "2026-06-28", "people": ["Ingrid", "Beatriz", "Laura", "Luciano"] },
+
+  { "date": "2026-07-05", "people": ["Laura", "Anna Bia", "Sarah", "Fábio"] },
+  { "date": "2026-07-12", "people": ["Israel", "Beatriz", "Sarah", "Luciano"] },
+  {
+    "date": "2026-07-19",
+    "people": ["Ingrid", "Anna Bia", "Letícia", "Fábio"]
+  },
+  {
+    "date": "2026-07-26",
+    "people": ["Laura", "Anna Júlia", "Israel", "Luciano"]
+  },
+
+  { "date": "2026-08-02", "people": ["Israel", "Laura", "Anna Bia", "Fábio"] },
+  {
+    "date": "2026-08-09",
+    "people": ["Ingrid", "Letícia", "Anna Júlia", "Luciano"]
+  },
+  { "date": "2026-08-16", "people": ["Sarah", "Beatriz", "Laura", "Fábio"] },
+  {
+    "date": "2026-08-23",
+    "people": ["Israel", "Anna Júlia", "Ingrid", "Luciano"]
+  },
+  { "date": "2026-08-30", "people": ["Ingrid", "Sarah", "Beatriz", "Fábio"] },
+
+  {
+    "date": "2026-09-06",
+    "people": ["Laura", "Letícia", "Anna Bia", "Luciano"]
+  },
+  { "date": "2026-09-13", "people": ["Israel", "Sarah", "Ingrid", "Fábio"] },
+  {
+    "date": "2026-09-20",
+    "people": ["Laura", "Beatriz", "Anna Júlia", "Luciano"]
+  },
+  {
+    "date": "2026-09-27",
+    "people": ["Letícia", "Anna Bia", "Anna Júlia", "Fábio"]
+  },
+
+  { "date": "2026-10-04", "people": ["Ingrid", "Laura", "Israel", "Luciano"] },
+  { "date": "2026-10-11", "people": ["Letícia", "Anna Bia", "Sarah", "Fábio"] },
+  {
+    "date": "2026-10-18",
+    "people": ["Sarah", "Anna Júlia", "Beatriz", "Luciano"]
+  },
+  { "date": "2026-10-25", "people": ["Laura", "Sarah", "Anna Júlia", "Fábio"] },
+
+  {
+    "date": "2026-11-01",
+    "people": ["Letícia", "Israel", "Beatriz", "Luciano"]
+  },
+  { "date": "2026-11-08", "people": ["Ingrid", "Anna Bia", "Laura", "Fábio"] },
+  { "date": "2026-11-15", "people": ["Letícia", "Ingrid", "Sarah", "Luciano"] },
+  {
+    "date": "2026-11-22",
+    "people": ["Laura", "Israel", "Anna Júlia", "Fábio"]
+  },
+  {
+    "date": "2026-11-29",
+    "people": ["Anna Bia", "Anna Júlia", "Beatriz", "Luciano"]
+  },
+
+  { "date": "2026-12-06", "people": ["Israel", "Ingrid", "Sarah", "Fábio"] },
+  {
+    "date": "2026-12-13",
+    "people": ["Anna Bia", "Laura", "Letícia", "Luciano"]
+  },
+  {
+    "date": "2026-12-20",
+    "people": ["Anna Júlia", "Beatriz", "Ingrid", "Fábio"]
+  },
+  {
+    "date": "2026-12-27",
+    "people": ["Anna Bia", "Anna Júlia", "Israel", "Luciano"]
+  }
+]

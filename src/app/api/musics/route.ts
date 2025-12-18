@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { musicSchema, musicEditSchema } from "@/lib/validations";
+import { AUTH_CONFIG } from "@/lib/auth";
 
-// Cache em memória para músicas (10 minutos - aumentado para reduzir re-fetch)
+// Cache em memória para músicas (10 minutos)
+// NOTA: Em ambientes serverless (Vercel, etc.), cada instância tem seu próprio cache.
+// Para produção em escala, considere usar Redis ou similar.
 let musicsCache: unknown[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
@@ -17,10 +20,7 @@ async function verifyAuth(request: NextRequest) {
   }
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "fallback-secret"
-    );
+    const decoded = jwt.verify(token, AUTH_CONFIG.jwtSecret);
     return decoded;
   } catch {
     return null;

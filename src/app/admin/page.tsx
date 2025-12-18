@@ -697,17 +697,6 @@ export default function AdminPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              console.log("🔍 Teste - Item clicado:", item);
-                              console.log("🔍 Teste - Estado atual:", { swapModal, swapMusicId });
-                            }}
-                            className="h-8 px-3"
-                          >
-                            Debug
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
                             onClick={() => handleViewMusic(item.music)}
                             className="h-8 px-3"
                           >

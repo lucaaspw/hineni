@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getWeekStart } from "@/lib/utils";
 
-// Cache em memória para repertório (10 minutos - aumentado para reduzir re-fetch)
+// Cache em memória para repertório (10 minutos)
+// NOTA: Em ambientes serverless (Vercel, etc.), cada instância tem seu próprio cache.
+// Para produção em escala, considere usar Redis ou similar.
 let repertoireCache: unknown[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
@@ -10,7 +13,6 @@ const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
 function invalidateRepertoireCache() {
   repertoireCache = null;
   cacheTimestamp = 0;
-  console.log("🗑️ Cache do repertório invalidado");
 }
 
 // GET - Listar repertório
@@ -28,8 +30,19 @@ export async function GET() {
       });
     }
 
+    // Calcular início da semana atual para filtrar apenas o repertório desta semana
+    const weekStart = getWeekStart();
+    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+
     // Query otimizada com seleção específica de campos
+    // Filtra apenas o repertório da semana atual
     const repertoire = await prisma.weeklyRepertoire.findMany({
+      where: {
+        weekStart: {
+          gte: weekStart,
+          lt: weekEnd,
+        },
+      },
       select: {
         id: true,
         position: true,
@@ -89,6 +102,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validar posição (deve ser entre 1 e 6)
+    if (position < 1 || position > 6) {
+      return NextResponse.json(
+        { message: "A posição deve ser entre 1 e 6" },
+        { status: 400 }
+      );
+    }
+
+    // Verificar se já existem 6 itens no repertório
+    const currentRepertoireCount = await prisma.weeklyRepertoire.count();
+    if (currentRepertoireCount >= 6) {
+      return NextResponse.json(
+        { message: "O repertório já está completo (máximo de 6 músicas)" },
+        { status: 400 }
+      );
+    }
+
     // Query otimizada para verificar se a música existe
     const music = await prisma.music.findUnique({
       where: { id: musicId },
@@ -102,25 +132,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Query otimizada para verificar se a posição já está ocupada
+    // Calcular o início da semana (domingo) para validações e criação
+    const weekStart = getWeekStart();
+    
+    // Verificar se a música já está no repertório desta semana
+    const musicAlreadyInRepertoire = await prisma.weeklyRepertoire.findFirst({
+      where: { 
+        musicId,
+        weekStart: {
+          gte: weekStart,
+          lt: new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000), // Próxima semana
+        },
+      },
+      select: { id: true },
+    });
+
+    if (musicAlreadyInRepertoire) {
+      return NextResponse.json(
+        { message: "Esta música já está no repertório desta semana" },
+        { status: 400 }
+      );
+    }
+    
+    // Query otimizada para verificar se a posição já está ocupada nesta semana
     const existingItem = await prisma.weeklyRepertoire.findFirst({
-      where: { position },
+      where: { 
+        position,
+        weekStart: {
+          gte: weekStart,
+          lt: new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000), // Próxima semana
+        },
+      },
       select: { id: true },
     });
 
     if (existingItem) {
       return NextResponse.json(
-        { message: "Posição já está ocupada" },
+        { message: `A posição ${position} já está ocupada nesta semana` },
         { status: 400 }
       );
     }
-
+    
     const repertoireItem = await prisma.weeklyRepertoire.create({
       data: {
         musicId,
         position,
         isManual,
-        weekStart: new Date(),
+        weekStart,
       },
       select: {
         id: true,
@@ -146,8 +204,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(repertoireItem, { status: 201 });
   } catch (error) {
     console.error("Erro ao adicionar ao repertório:", error);
+    
+    // Verificar se é erro de constraint única (posição duplicada)
+    if (error instanceof Error && error.message.includes("Unique constraint")) {
+      return NextResponse.json(
+        { message: "Esta posição já está ocupada nesta semana" },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { message: "Erro interno do servidor" },
+      { 
+        message: "Erro interno do servidor",
+        ...(process.env.NODE_ENV === "development" && { 
+          error: error instanceof Error ? error.message : "Erro desconhecido" 
+        })
+      },
       { status: 500 }
     );
   }
@@ -157,18 +229,14 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log("🔄 PUT /api/repertoire - Dados recebidos:", body);
-    
     const { id, musicId } = body;
+    
     if (!id || !musicId) {
-      console.log("❌ Dados inválidos:", { id, musicId });
       return NextResponse.json(
         { message: "ID do item e ID da música são obrigatórios" },
         { status: 400 }
       );
     }
-
-    console.log("✅ Dados válidos, verificando música...");
 
     // Query otimizada para verificar se a música existe
     const music = await prisma.music.findUnique({ 
@@ -177,14 +245,11 @@ export async function PUT(request: NextRequest) {
     });
     
     if (!music) {
-      console.log("❌ Música não encontrada:", musicId);
       return NextResponse.json(
         { message: "Música não encontrada" },
         { status: 404 }
       );
     }
-
-    console.log("✅ Música encontrada:", music.title);
 
     // Verificar se o item do repertório existe
     const existingItem = await prisma.weeklyRepertoire.findUnique({
@@ -193,14 +258,11 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!existingItem) {
-      console.log("❌ Item do repertório não encontrado:", id);
       return NextResponse.json(
         { message: "Item do repertório não encontrado" },
         { status: 404 }
       );
     }
-
-    console.log("✅ Item do repertório encontrado:", existingItem);
 
     // Atualizar o item do repertório com seleção otimizada
     const updated = await prisma.weeklyRepertoire.update({
@@ -224,8 +286,6 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    console.log("✅ Item atualizado com sucesso:", updated);
-
     // Invalidar cache
     invalidateRepertoireCache();
 
@@ -238,9 +298,14 @@ export async function PUT(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("❌ Erro ao trocar música do repertório:", error);
+    console.error("Erro ao trocar música do repertório:", error);
     return NextResponse.json(
-      { message: "Erro interno do servidor" },
+      { 
+        message: "Erro interno do servidor",
+        ...(process.env.NODE_ENV === "development" && { 
+          error: error instanceof Error ? error.message : "Erro desconhecido" 
+        })
+      },
       { status: 500 }
     );
   }
@@ -270,7 +335,12 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("Erro ao remover do repertório:", error);
     return NextResponse.json(
-      { message: "Erro interno do servidor" },
+      { 
+        message: "Erro interno do servidor",
+        ...(process.env.NODE_ENV === "development" && { 
+          error: error instanceof Error ? error.message : "Erro desconhecido" 
+        })
+      },
       { status: 500 }
     );
   }

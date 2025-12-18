@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Music, Home, Settings, LogIn, Menu } from "lucide-react";
+import { Music, Home, Settings, LogIn, Menu, Calendar } from "lucide-react";
 import { useState, memo, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,6 +89,11 @@ export function Header() {
         name: "Louvores",
         href: "/louvores",
         icon: Music,
+      },
+      {
+        name: "Escala",
+        href: "/escala",
+        icon: Calendar,
       },
       {
         name: "Admin",
