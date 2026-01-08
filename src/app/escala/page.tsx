@@ -98,14 +98,6 @@ WeekCard.displayName = "WeekCard";
 
 const ScalePage = () => {
   const { currentWeek, upcomingWeeks } = useMemo(() => {
-    // Encontrar o próximo domingo
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, etc.
-    const daysUntilNextSunday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
-    const nextSunday = new Date(today);
-    nextSunday.setDate(today.getDate() + daysUntilNextSunday);
-    nextSunday.setHours(0, 0, 0, 0);
-
     // Formatar a data no formato YYYY-MM-DD
     const formatDate = (date: Date): string => {
       const year = date.getFullYear();
@@ -114,16 +106,44 @@ const ScalePage = () => {
       return `${year}-${month}-${day}`;
     };
 
-    const nextSundayStr = formatDate(nextSunday);
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, etc.
+    const currentHour = today.getHours();
 
-    // Encontrar a entrada do próximo domingo
+    // Calcular o domingo da semana atual (último domingo que passou)
+    const currentSunday = new Date(today);
+    const daysSinceSunday = dayOfWeek; // 0 se for domingo, 1 se segunda, etc.
+    currentSunday.setDate(today.getDate() - daysSinceSunday);
+    currentSunday.setHours(0, 0, 0, 0);
+
+    // Calcular o próximo domingo
+    const nextSunday = new Date(currentSunday);
+    nextSunday.setDate(currentSunday.getDate() + 7);
+    nextSunday.setHours(0, 0, 0, 0);
+
+    // Determinar qual domingo usar:
+    // - Se hoje é domingo e ainda não são 23:00, usar este domingo
+    // - Caso contrário (é domingo e já passou das 23:00, ou não é domingo), usar o próximo domingo
+    let targetSunday: Date;
+
+    if (dayOfWeek === 0 && currentHour < 23) {
+      // É domingo e ainda não são 23:00, usar este domingo
+      targetSunday = currentSunday;
+    } else {
+      // É domingo e já passou das 23:00, ou não é domingo - usar o próximo domingo
+      targetSunday = nextSunday;
+    }
+
+    const targetSundayStr = formatDate(targetSunday);
+
+    // Encontrar a entrada do domingo alvo
     const escala = escalaData as EscalaItem[];
     const currentWeekIndex = escala.findIndex(
-      (item) => item.date === nextSundayStr
+      (item) => item.date === targetSundayStr
     );
 
     if (currentWeekIndex === -1) {
-      // Se não encontrar o próximo domingo, usar a primeira entrada
+      // Se não encontrar o domingo alvo, usar a primeira entrada
       return {
         currentWeek: escala[0] || null,
         upcomingWeeks: escala.slice(1),
