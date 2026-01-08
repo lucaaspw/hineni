@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -535,7 +536,7 @@ export default function AdminPage() {
                     <form onSubmit={handleRepertoireSubmit} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="musicId">Música *</Label>
-                        <select
+                        <Select
                           id="musicId"
                           value={repertoireFormData.musicId}
                           onChange={(e) =>
@@ -545,9 +546,8 @@ export default function AdminPage() {
                             })
                           }
                           required
-                          className="w-full p-2 border rounded-md text-gray-500"
                         >
-                          <option className="text-gray-500" value="">
+                          <option value="">
                             Selecione uma música
                           </option>
                           {availableMusicsForRepertoire.map((music) => (
@@ -557,11 +557,11 @@ export default function AdminPage() {
                               {music.isNewOfWeek && " ⭐ (Nova da Semana)"}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="position">Posição *</Label>
-                        <select
+                        <Select
                           id="position"
                           value={repertoireFormData.position}
                           onChange={(e) =>
@@ -571,14 +571,13 @@ export default function AdminPage() {
                             })
                           }
                           required
-                          className="w-full p-2 border rounded-md"
                         >
                           {Array.from({ length: 6 }, (_, i) => i + 1).map((pos) => (
                             <option key={pos} value={pos}>
                               Posição {pos}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Checkbox
@@ -1046,11 +1045,10 @@ export default function AdminPage() {
           <div className="space-y-4">
             <div>
               <Label htmlFor="swap-music">Escolha a nova música</Label>
-              <select
+              <Select
                 id="swap-music"
                 value={swapMusicId}
                 onChange={(e) => setSwapMusicId(e.target.value)}
-                className="w-full p-2 border rounded-md text-gray-500"
               >
                 <option value="">Selecione uma música</option>
                 {musics
@@ -1062,7 +1060,7 @@ export default function AdminPage() {
                       {music.isNewOfWeek && " ⭐ (Nova da Semana)"}
                     </option>
                   ))}
-              </select>
+              </Select>
             </div>
             <div className="flex justify-end space-x-2">
               <Button

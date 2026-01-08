@@ -149,8 +149,11 @@ export default function LouvoresPage() {
 
     // Verificar cache primeiro
     if (musicsCache && now - cacheTimestamp < CACHE_DURATION) {
-      setMusics(musicsCache);
-      setFilteredMusics(musicsCache);
+      const sortedMusics = [...musicsCache].sort((a, b) =>
+        a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" })
+      );
+      setMusics(sortedMusics);
+      setFilteredMusics(sortedMusics);
       setLoading(false);
       return;
     }
@@ -163,11 +166,15 @@ export default function LouvoresPage() {
       });
       if (response.ok) {
         const data = await response.json();
+        // Ordenar alfabeticamente por título
+        const sortedData = [...data].sort((a, b) =>
+          a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" })
+        );
         // Atualizar cache
-        musicsCache = data;
+        musicsCache = sortedData;
         cacheTimestamp = now;
-        setMusics(data);
-        setFilteredMusics(data);
+        setMusics(sortedData);
+        setFilteredMusics(sortedData);
       }
     } catch (error) {
       console.error("Erro ao carregar músicas:", error);
@@ -183,7 +190,11 @@ export default function LouvoresPage() {
   // Memoização do filtro de músicas otimizada
   useEffect(() => {
     if (!searchTerm.trim()) {
-      setFilteredMusics(musics);
+      // Manter ordenação alfabética mesmo sem busca
+      const sorted = [...musics].sort((a, b) =>
+        a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" })
+      );
+      setFilteredMusics(sorted);
       return;
     }
 
@@ -193,7 +204,11 @@ export default function LouvoresPage() {
         music.title.toLowerCase().includes(searchLower) ||
         (music.artist && music.artist.toLowerCase().includes(searchLower))
     );
-    setFilteredMusics(filtered);
+    // Ordenar resultados filtrados alfabeticamente
+    const sortedFiltered = [...filtered].sort((a, b) =>
+      a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" })
+    );
+    setFilteredMusics(sortedFiltered);
   }, [searchTerm, musics]);
 
   // Memoização do grid de músicas
