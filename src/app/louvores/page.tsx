@@ -54,11 +54,23 @@ const MusicCard = memo(
     }, [music.lyrics]);
 
     return (
-      <Card className="group hover:shadow-lg transition-all duration-200 hover:-translate-y-1 border-0 bg-gradient-to-r from-card to-card/50 backdrop-blur-sm">
+      <Card
+        className={`group hover:shadow-lg transition-all duration-200 hover:-translate-y-1 border-0 backdrop-blur-sm ${
+          music.isNewOfWeek
+            ? "new-week-music-card"
+            : "bg-gradient-to-r from-card to-card/50"
+        }`}
+      >
         <CardHeader className="pb-3 sm:pb-4">
           <CardTitle className="flex items-start justify-between space-y-2 sm:space-y-0 sm:flex-row sm:items-center">
             <div className="flex-1 min-w-0">
-              <h3 className="text-base sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+              <h3
+                className={`text-base sm:text-lg font-semibold transition-colors truncate ${
+                  music.isNewOfWeek
+                    ? "new-week-music-title group-hover:text-green-600 dark:group-hover:text-green-300"
+                    : "text-foreground group-hover:text-primary"
+                }`}
+              >
                 {music.title}
               </h3>
               {music.artist && (
@@ -69,9 +81,8 @@ const MusicCard = memo(
             </div>
             <div className="flex items-center space-x-2 flex-shrink-0">
               {music.isNewOfWeek && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                  <Star className="w-3 h-3 mr-1" />
-                  Nova
+                <span className="inline-flex items-center h-6 w-6 justify-center rounded-full text-sm font-semibold new-week-music-badge">
+                  <Star className="w-4 h-4" />
                 </span>
               )}
               <Button
@@ -224,14 +235,15 @@ export default function LouvoresPage() {
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)]">
-      {/* Header Section */}
-      <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border-b">
-        <div className="container mx-auto px-4 py-6 sm:py-8">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+        <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
+        <div className="relative container mx-auto px-4 py-6 sm:py-8">
           <div className="text-center space-y-2 sm:space-y-3 max-w-3xl mx-auto">
             <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 mb-2 sm:mb-3">
               <Music className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight px-2">
               Biblioteca de Louvores
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
@@ -250,9 +262,9 @@ export default function LouvoresPage() {
       </div>
 
       {/* Musics Grid */}
-      <div className="container mx-auto px-4 pb-8 sm:pb-12">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
         {filteredMusics.length > 0 ? (
-          <div className="grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
             {musicGrid}
           </div>
         ) : (
