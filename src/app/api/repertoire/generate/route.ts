@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { AUTH_CONFIG } from "@/lib/auth";
-import { getWeekStart } from "@/lib/utils";
+import { getWeekStart, getWeekEnd } from "@/lib/utils";
 
 // Middleware para verificar autenticação
 async function verifyAuth(request: NextRequest) {
@@ -27,9 +27,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    // Calcular o início da semana (domingo) para limpar apenas o repertório desta semana
+    // Calcular o início e fim da semana (segunda-feira às 03h) para limpar apenas o repertório desta semana
+    // A semana começa na segunda-feira às 03h
     const weekStart = getWeekStart();
-    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const weekEnd = getWeekEnd();
 
     // Limpar repertório apenas da semana atual
     await prisma.weeklyRepertoire.deleteMany({
@@ -70,10 +71,10 @@ export async function POST(request: NextRequest) {
     if (allAvailableMusics.length < musicsNeeded) {
       const totalMusics = (newOfWeekMusic ? 1 : 0) + allAvailableMusics.length;
       return NextResponse.json(
-        { 
+        {
           message: `Não há músicas suficientes para gerar o repertório. Necessário: 6, Disponível: ${totalMusics}`,
           available: totalMusics,
-          required: 6
+          required: 6,
         },
         { status: 400 }
       );
@@ -97,8 +98,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Posições 2-6: Outras músicas
-    const positionsToFill = newOfWeekMusic ? [2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6];
-    
+    const positionsToFill = newOfWeekMusic
+      ? [2, 3, 4, 5, 6]
+      : [1, 2, 3, 4, 5, 6];
+
     otherMusics.forEach((music, index) => {
       const position = positionsToFill[index];
       repertoireData.push({
@@ -135,28 +138,30 @@ export async function POST(request: NextRequest) {
       orderBy: { position: "asc" },
     });
 
-    return NextResponse.json({ 
-      message: "Repertório gerado automaticamente com sucesso",
-      repertoire: createdRepertoire,
-      total: createdRepertoire.length,
-      weekStart: weekStart.toISOString().split('T')[0], // Data formatada
-    }, {
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0",
-        "X-Cache-Invalidated": "true",
+    return NextResponse.json(
+      {
+        message: "Repertório gerado automaticamente com sucesso",
+        repertoire: createdRepertoire,
+        total: createdRepertoire.length,
+        weekStart: weekStart.toISOString().split("T")[0], // Data formatada
       },
-    });
-
+      {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+          "X-Cache-Invalidated": "true",
+        },
+      }
+    );
   } catch (error) {
     console.error("Erro ao gerar repertório:", error);
     return NextResponse.json(
-      { 
+      {
         message: "Erro interno do servidor",
-        ...(process.env.NODE_ENV === "development" && { 
-          error: error instanceof Error ? error.message : "Erro desconhecido" 
-        })
+        ...(process.env.NODE_ENV === "development" && {
+          error: error instanceof Error ? error.message : "Erro desconhecido",
+        }),
       },
       { status: 500 }
     );

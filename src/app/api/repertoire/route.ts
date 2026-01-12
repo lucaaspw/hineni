@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getWeekStart } from "@/lib/utils";
+import { getWeekStart, getWeekEnd } from "@/lib/utils";
 
 // Cache em memória para repertório (10 minutos)
 // NOTA: Em ambientes serverless (Vercel, etc.), cada instância tem seu próprio cache.
@@ -30,13 +30,14 @@ export async function GET() {
       });
     }
 
-    // Calcular início da semana atual para filtrar apenas o repertório desta semana
+    // Calcular início e fim da semana atual para filtrar apenas o repertório desta semana
+    // A semana começa na segunda-feira às 03h
     const weekStart = getWeekStart();
-    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const weekEnd = getWeekEnd();
 
     // Query otimizada com seleção específica de campos
     // Filtra apenas o repertório da semana atual
-    const repertoire = await prisma.weeklyRepertoire.findMany({
+    let repertoire = await prisma.weeklyRepertoire.findMany({
       where: {
         weekStart: {
           gte: weekStart,
@@ -71,9 +72,85 @@ export async function GET() {
       ],
     });
 
-    // Atualizar cache
-    repertoireCache = repertoire;
-    cacheTimestamp = now;
+    // Se não encontrou repertório com a nova lógica, buscar o mais recente
+    // (pode ser que os dados antigos estejam com formato diferente)
+    if (repertoire.length === 0) {
+      console.log(`[Repertório] Nenhum repertório encontrado para semana atual (${weekStart.toISOString()} - ${weekEnd.toISOString()}), buscando mais recente...`);
+      
+      // Buscar o repertório mais recente (últimos 7 dias)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      repertoire = await prisma.weeklyRepertoire.findMany({
+        where: {
+          weekStart: {
+            gte: sevenDaysAgo,
+          },
+        },
+        select: {
+          id: true,
+          position: true,
+          isManual: true,
+          weekStart: true,
+          music: {
+            select: {
+              id: true,
+              title: true,
+              artist: true,
+              lyrics: true,
+              chords: true,
+              isNewOfWeek: true,
+            },
+          },
+        },
+        orderBy: [
+          {
+            weekStart: "desc", // Mais recente primeiro
+          },
+          {
+            music: {
+              isNewOfWeek: "desc",
+            },
+          },
+          {
+            position: "asc",
+          },
+        ],
+        take: 6, // Limitar a 6 músicas (um repertório completo)
+      });
+
+      // Se encontrou repertório, agrupar por weekStart e pegar o mais recente
+      if (repertoire.length > 0) {
+        // Agrupar por weekStart
+        const groupedByWeek = repertoire.reduce((acc, item) => {
+          const weekKey = item.weekStart.toISOString().split('T')[0];
+          if (!acc[weekKey]) {
+            acc[weekKey] = [];
+          }
+          acc[weekKey].push(item);
+          return acc;
+        }, {} as Record<string, typeof repertoire>);
+
+        // Pegar o grupo mais recente
+        const latestWeek = Object.keys(groupedByWeek).sort().reverse()[0];
+        repertoire = groupedByWeek[latestWeek] || [];
+        
+        console.log(`[Repertório] Encontrado repertório antigo com ${repertoire.length} músicas da semana ${latestWeek}`);
+      } else {
+        console.log('[Repertório] Nenhum repertório encontrado nos últimos 7 dias');
+      }
+    } else {
+      console.log(`[Repertório] Encontrado ${repertoire.length} músicas para a semana atual`);
+    }
+
+    // Atualizar cache apenas se encontrou repertório
+    if (repertoire.length > 0) {
+      repertoireCache = repertoire;
+      cacheTimestamp = now;
+    } else {
+      // Se não encontrou, invalidar cache para forçar nova busca
+      invalidateRepertoireCache();
+    }
 
     return NextResponse.json(repertoire, {
       headers: {
@@ -132,8 +209,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calcular o início da semana (domingo) para validações e criação
+    // Calcular o início e fim da semana (segunda-feira às 03h) para validações e criação
+    // A semana começa na segunda-feira às 03h
     const weekStart = getWeekStart();
+    const weekEnd = getWeekEnd();
     
     // Verificar se a música já está no repertório desta semana
     const musicAlreadyInRepertoire = await prisma.weeklyRepertoire.findFirst({
@@ -141,7 +220,7 @@ export async function POST(request: NextRequest) {
         musicId,
         weekStart: {
           gte: weekStart,
-          lt: new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000), // Próxima semana
+          lt: weekEnd,
         },
       },
       select: { id: true },
@@ -160,7 +239,7 @@ export async function POST(request: NextRequest) {
         position,
         weekStart: {
           gte: weekStart,
-          lt: new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000), // Próxima semana
+          lt: weekEnd,
         },
       },
       select: { id: true },
