@@ -4,8 +4,18 @@ import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Music, Search, Eye, Star, ExternalLink } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Music, Search, Eye, Star, ExternalLink, Edit } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
+import { toast } from "sonner";
 
 interface Music {
   id: string;
@@ -39,13 +49,27 @@ const MusicCard = memo(
   ({
     music,
     onViewMusic,
+    onEditMusic,
+    isAuthenticated,
   }: {
     music: Music;
     onViewMusic: (music: Music) => void;
+    onEditMusic?: (music: Music) => void;
+    isAuthenticated?: boolean;
   }) => {
     const handleViewClick = useCallback(() => {
       onViewMusic(music);
     }, [music, onViewMusic]);
+
+    const handleEditClick = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onEditMusic) {
+          onEditMusic(music);
+        }
+      },
+      [music, onEditMusic]
+    );
 
     const truncatedLyrics = useMemo(() => {
       const lines = music.lyrics.split("\n");
@@ -108,6 +132,17 @@ const MusicCard = memo(
                   <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
               )}
+              {isAuthenticated && onEditMusic && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEditClick}
+                  className="h-8 px-3"
+                  title="Editar música"
+                >
+                  <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -166,6 +201,19 @@ export default function LouvoresPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedMusic, setSelectedMusic] = useState<Music | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    id: "",
+    title: "",
+    artist: "",
+    lyrics: "",
+    chords: "",
+    externalLink: "",
+    isNewOfWeek: false,
+  });
+  const [formLoading, setFormLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Memoização da função de busca
   const handleSearchChange = useCallback((value: string) => {
@@ -176,6 +224,97 @@ export default function LouvoresPage() {
   const handleViewMusic = useCallback((music: Music) => {
     setSelectedMusic(music);
   }, []);
+
+  // Verificar autenticação
+  const checkAuth = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/verify");
+      if (response.ok) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+    } catch {
+      setIsAuthenticated(false);
+    }
+  }, []);
+
+  // Função para abrir modal de edição
+  const handleEditMusic = useCallback((music: Music) => {
+    setEditFormData({
+      id: music.id,
+      title: music.title,
+      artist: music.artist || "",
+      lyrics: music.lyrics,
+      chords: music.chords || "",
+      externalLink: music.externalLink || "",
+      isNewOfWeek: music.isNewOfWeek,
+    });
+    setShowEditForm(true);
+    setErrorMessage("");
+  }, []);
+
+  // Função para atualizar música
+  const handleEditSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setFormLoading(true);
+      setErrorMessage("");
+
+      try {
+        const response = await fetch("/api/musics", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(editFormData),
+        });
+
+        if (response.ok) {
+          const updatedMusic = await response.json();
+
+          // Atualizar cache local
+          musicsCache = null; // Invalidar cache
+          cacheTimestamp = 0;
+
+          // Atualizar estado local
+          setMusics((prev) =>
+            prev.map((music) =>
+              music.id === updatedMusic.id ? updatedMusic : music
+            )
+          );
+          setFilteredMusics((prev) =>
+            prev.map((music) =>
+              music.id === updatedMusic.id ? updatedMusic : music
+            )
+          );
+
+          setEditFormData({
+            id: "",
+            title: "",
+            artist: "",
+            lyrics: "",
+            chords: "",
+            externalLink: "",
+            isNewOfWeek: false,
+          });
+          setShowEditForm(false);
+          toast.success("Música editada com sucesso!");
+        } else {
+          const errorData = await response.json();
+          setErrorMessage(errorData.message || "Erro ao editar música");
+          toast.error(errorData.message || "Erro ao editar música");
+        }
+      } catch (error) {
+        console.error("Erro ao editar música:", error);
+        setErrorMessage("Erro de conexão. Tente novamente.");
+        toast.error("Erro de conexão. Tente novamente.");
+      } finally {
+        setFormLoading(false);
+      }
+    },
+    [editFormData]
+  );
 
   // Memoização da função de fetch com cache otimizado
   const fetchMusics = useCallback(async () => {
@@ -218,8 +357,9 @@ export default function LouvoresPage() {
   }, []);
 
   useEffect(() => {
+    checkAuth();
     fetchMusics();
-  }, [fetchMusics]);
+  }, [checkAuth, fetchMusics]);
 
   // Memoização do filtro de músicas otimizada
   useEffect(() => {
@@ -248,9 +388,15 @@ export default function LouvoresPage() {
   // Memoização do grid de músicas
   const musicGrid = useMemo(() => {
     return filteredMusics.map((music) => (
-      <MusicCard key={music.id} music={music} onViewMusic={handleViewMusic} />
+      <MusicCard
+        key={music.id}
+        music={music}
+        onViewMusic={handleViewMusic}
+        onEditMusic={isAuthenticated ? handleEditMusic : undefined}
+        isAuthenticated={isAuthenticated}
+      />
     ));
-  }, [filteredMusics, handleViewMusic]);
+  }, [filteredMusics, handleViewMusic, handleEditMusic, isAuthenticated]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -322,6 +468,139 @@ export default function LouvoresPage() {
         open={!!selectedMusic}
         onOpenChange={(open) => !open && setSelectedMusic(null)}
       />
+
+      {/* Modal de Edição de Música */}
+      <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
+        <DialogContent className="w-full h-full sm:w-auto sm:h-auto sm:max-w-lg md:max-w-xl lg:max-w-2xl sm:max-h-[calc(100vh-4rem)] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Edit className="w-5 h-5" />
+              <span>Editar Música</span>
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-title">Título *</Label>
+                <Input
+                  id="edit-title"
+                  value={editFormData.title}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, title: e.target.value })
+                  }
+                  required
+                  placeholder="Digite o título da música"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-artist">Artista</Label>
+                <Input
+                  id="edit-artist"
+                  value={editFormData.artist}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, artist: e.target.value })
+                  }
+                  placeholder="Digite o nome do artista"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-lyrics">Letra *</Label>
+              <Textarea
+                id="edit-lyrics"
+                value={editFormData.lyrics}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, lyrics: e.target.value })
+                }
+                required
+                rows={6}
+                placeholder="Digite a letra da música..."
+                className="resize-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-chords">Cifra</Label>
+              <Textarea
+                id="edit-chords"
+                value={editFormData.chords}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, chords: e.target.value })
+                }
+                rows={4}
+                placeholder="Digite a cifra da música..."
+                className="resize-none font-mono text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-externalLink">
+                Link do YouTube ou Spotify
+              </Label>
+              <Input
+                id="edit-externalLink"
+                type="url"
+                value={editFormData.externalLink}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    externalLink: e.target.value,
+                  })
+                }
+                placeholder="https://youtube.com/... ou https://open.spotify.com/..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Cole o link completo do YouTube ou Spotify
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="edit-isNewOfWeek"
+                checked={editFormData.isNewOfWeek}
+                onCheckedChange={(checked) =>
+                  setEditFormData({
+                    ...editFormData,
+                    isNewOfWeek: checked as boolean,
+                  })
+                }
+              />
+              <Label
+                htmlFor="edit-isNewOfWeek"
+                className="flex items-center space-x-1"
+              >
+                <Star className="w-4 h-4" />
+                <span>Música nova da semana</span>
+              </Label>
+            </div>
+
+            {errorMessage && (
+              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                {errorMessage}
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowEditForm(false);
+                  setErrorMessage("");
+                }}
+                disabled={formLoading}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={formLoading}>
+                {formLoading ? "Salvando..." : "Salvar alterações"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
