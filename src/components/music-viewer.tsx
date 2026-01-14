@@ -18,6 +18,7 @@ interface Music {
   artist?: string;
   lyrics: string;
   chords?: string;
+  externalLink?: string;
   isNewOfWeek: boolean;
 }
 

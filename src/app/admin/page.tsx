@@ -27,6 +27,7 @@ import {
   Eye,
   Edit,
   Calendar,
+  ExternalLink,
 } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
 import { toast } from "sonner";
@@ -37,6 +38,7 @@ interface Music {
   artist?: string;
   lyrics: string;
   chords?: string;
+  externalLink?: string;
   isNewOfWeek: boolean;
 }
 
@@ -69,6 +71,7 @@ export default function AdminPage() {
     artist: "",
     lyrics: "",
     chords: "",
+    externalLink: "",
     isNewOfWeek: false,
   });
   const [editFormData, setEditFormData] = useState({
@@ -77,6 +80,7 @@ export default function AdminPage() {
     artist: "",
     lyrics: "",
     chords: "",
+    externalLink: "",
     isNewOfWeek: false,
   });
   const [repertoireFormData, setRepertoireFormData] = useState({
@@ -200,6 +204,7 @@ export default function AdminPage() {
           artist: "",
           lyrics: "",
           chords: "",
+          externalLink: "",
           isNewOfWeek: false,
         });
         setShowAddForm(false);
@@ -295,6 +300,7 @@ export default function AdminPage() {
       artist: music.artist || "",
       lyrics: music.lyrics,
       chords: music.chords || "",
+      externalLink: music.externalLink || "",
       isNewOfWeek: music.isNewOfWeek,
     });
     setShowEditForm(true);
@@ -343,6 +349,7 @@ export default function AdminPage() {
           artist: "",
           lyrics: "",
           chords: "",
+          externalLink: "",
           isNewOfWeek: false,
         });
         setShowEditForm(false);
@@ -685,6 +692,20 @@ export default function AdminPage() {
                               Manual
                             </span>
                           )}
+                          {item.music.externalLink && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(item.music.externalLink, "_blank", "noopener,noreferrer");
+                              }}
+                              className="h-8 px-3"
+                              title={item.music.externalLink.includes("spotify") ? "Abrir no Spotify" : "Abrir no YouTube"}
+                            >
+                              <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
@@ -792,6 +813,22 @@ export default function AdminPage() {
                       />
                     </div>
 
+                    <div className="space-y-2">
+                      <Label htmlFor="externalLink">Link do YouTube ou Spotify</Label>
+                      <Input
+                        id="externalLink"
+                        type="url"
+                        value={formData.externalLink}
+                        onChange={(e) =>
+                          setFormData({ ...formData, externalLink: e.target.value })
+                        }
+                        placeholder="https://youtube.com/... ou https://open.spotify.com/..."
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Cole o link completo do YouTube ou Spotify
+                      </p>
+                    </div>
+
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="isNewOfWeek"
@@ -864,6 +901,20 @@ export default function AdminPage() {
                             <Star className="w-3 h-3 mr-1" />
                             Nova
                           </span>
+                        )}
+                        {music.externalLink && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(music.externalLink, "_blank", "noopener,noreferrer");
+                            }}
+                            className="h-8 px-3"
+                            title={music.externalLink.includes("spotify") ? "Abrir no Spotify" : "Abrir no YouTube"}
+                          >
+                            <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </Button>
                         )}
                         <Button
                           variant="outline"
@@ -982,6 +1033,22 @@ export default function AdminPage() {
                 placeholder="Digite a cifra da música..."
                 className="resize-none font-mono text-sm"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-externalLink">Link do YouTube ou Spotify</Label>
+              <Input
+                id="edit-externalLink"
+                type="url"
+                value={editFormData.externalLink}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, externalLink: e.target.value })
+                }
+                placeholder="https://youtube.com/... ou https://open.spotify.com/..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Cole o link completo do YouTube ou Spotify
+              </p>
             </div>
 
             <div className="flex items-center space-x-2">

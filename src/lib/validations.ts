@@ -9,6 +9,28 @@ export const musicSchema = z.object({
   artist: z.string().optional(),
   lyrics: z.string().min(1, "Letra é obrigatória"),
   chords: z.string().optional(),
+  externalLink: z
+    .string()
+    .optional()
+    .refine(
+      (url) => {
+        if (!url || url.trim() === "") return true;
+        try {
+          new URL(url);
+          return (
+            url.includes("youtube.com") ||
+            url.includes("youtu.be") ||
+            url.includes("spotify.com") ||
+            url.includes("open.spotify.com")
+          );
+        } catch {
+          return false;
+        }
+      },
+      {
+        message: "Link deve ser uma URL válida do YouTube ou Spotify",
+      }
+    ),
   isNewOfWeek: z.boolean().default(false),
 });
 
@@ -22,6 +44,28 @@ export const musicEditSchema = z.object({
   artist: z.string().optional(),
   lyrics: z.string().min(1, "Letra é obrigatória"),
   chords: z.string().optional(),
+  externalLink: z
+    .string()
+    .optional()
+    .refine(
+      (url) => {
+        if (!url || url.trim() === "") return true;
+        try {
+          new URL(url);
+          return (
+            url.includes("youtube.com") ||
+            url.includes("youtu.be") ||
+            url.includes("spotify.com") ||
+            url.includes("open.spotify.com")
+          );
+        } catch {
+          return false;
+        }
+      },
+      {
+        message: "Link deve ser uma URL válida do YouTube ou Spotify",
+      }
+    ),
   isNewOfWeek: z.boolean().default(false),
 });
 

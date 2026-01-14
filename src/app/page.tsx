@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Music, Calendar, Star, Eye } from "lucide-react";
+import { Music, Calendar, Star, Eye, ExternalLink } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
 
 interface Music {
@@ -12,6 +12,7 @@ interface Music {
   artist?: string;
   lyrics: string;
   chords?: string;
+  externalLink?: string;
   isNewOfWeek: boolean;
 }
 
@@ -85,6 +86,20 @@ const MusicCard = memo(
                 <span className="inline-flex items-center h-6 w-6 justify-center rounded-full text-sm font-semibold new-week-music-badge">
                   <Star className="w-4 h-4" />
                 </span>
+              )}
+              {item.music.externalLink && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(item.music.externalLink, "_blank", "noopener,noreferrer");
+                  }}
+                  className="h-8 px-3"
+                  title={item.music.externalLink.includes("spotify") ? "Abrir no Spotify" : "Abrir no YouTube"}
+                >
+                  <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
+                </Button>
               )}
               <Button
                 variant="outline"
