@@ -100,6 +100,7 @@ export async function GET() {
               artist: true,
               lyrics: true,
               chords: true,
+              externalLink: true,
               isNewOfWeek: true,
             },
           },
