@@ -579,7 +579,7 @@ export default function AdminPage() {
                           }
                           required
                         >
-                          {Array.from({ length: 6 }, (_, i) => i + 1).map((pos) => (
+                          {Array.from({ length: 5 }, (_, i) => i + 1).map((pos) => (
                             <option key={pos} value={pos}>
                               Posição {pos}
                             </option>

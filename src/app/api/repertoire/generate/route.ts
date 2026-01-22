@@ -64,17 +64,17 @@ export async function POST(request: NextRequest) {
       return shuffled;
     }
 
-    // Calcular quantas músicas são necessárias (6 total, menos 1 se houver música nova da semana)
-    const musicsNeeded = newOfWeekMusic ? 5 : 6;
+    // Calcular quantas músicas são necessárias (5 total, menos 1 se houver música nova da semana)
+    const musicsNeeded = newOfWeekMusic ? 4 : 5;
 
     // Verificar se há músicas suficientes antes de embaralhar
     if (allAvailableMusics.length < musicsNeeded) {
       const totalMusics = (newOfWeekMusic ? 1 : 0) + allAvailableMusics.length;
       return NextResponse.json(
         {
-          message: `Não há músicas suficientes para gerar o repertório. Necessário: 6, Disponível: ${totalMusics}`,
+          message: `Não há músicas suficientes para gerar o repertório. Necessário: 5, Disponível: ${totalMusics}`,
           available: totalMusics,
-          required: 6,
+          required: 5,
         },
         { status: 400 }
       );
@@ -97,10 +97,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Posições 2-6: Outras músicas
+    // Posições 2-5: Outras músicas
     const positionsToFill = newOfWeekMusic
-      ? [2, 3, 4, 5, 6]
-      : [1, 2, 3, 4, 5, 6];
+      ? [2, 3, 4, 5]
+      : [1, 2, 3, 4, 5];
 
     otherMusics.forEach((music, index) => {
       const position = positionsToFill[index];

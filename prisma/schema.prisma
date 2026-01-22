@@ -36,7 +36,7 @@ model Music {
 model WeeklyRepertoire {
   id        String   @id @default(cuid())
   musicId   String
-  position  Int      // Posição no repertório (1-6)
+  position  Int      // Posição no repertório (1-5)
   isManual  Boolean  @default(false) // Se foi adicionada manualmente
   weekStart DateTime // Data de início da semana
   createdAt DateTime @default(now())

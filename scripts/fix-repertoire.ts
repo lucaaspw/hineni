@@ -127,12 +127,12 @@ async function main() {
       orderBy: [
         { createdAt: 'desc' }, // Músicas mais recentes primeiro
       ],
-      take: 6 - (newOfWeekMusic ? 1 : 0), // Preencher até 6 posições
+      take: 5 - (newOfWeekMusic ? 1 : 0), // Preencher até 5 posições
       select: { id: true, title: true, artist: true },
     });
 
     // Adicionar outras músicas
-    const positionsToFill = newOfWeekMusic ? [2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6];
+    const positionsToFill = newOfWeekMusic ? [2, 3, 4, 5] : [1, 2, 3, 4, 5];
     
     otherMusics.forEach((music, index) => {
       const position = positionsToFill[index];
