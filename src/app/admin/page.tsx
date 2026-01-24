@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
 import { toast } from "sonner";
+import { truncateTitle } from "@/lib/utils";
 
 interface Music {
   id: string;
@@ -559,7 +560,7 @@ export default function AdminPage() {
                           </option>
                           {availableMusicsForRepertoire.map((music) => (
                             <option key={music.id} value={music.id}>
-                              {music.title}
+                              {truncateTitle(music.title)}
                               {music.artist && ` - ${music.artist}`}
                               {music.isNewOfWeek && " ⭐ (Nova da Semana)"}
                             </option>
@@ -672,7 +673,7 @@ export default function AdminPage() {
                           </span>
                           <div className="min-w-0 flex-1">
                             <h3 className="text-sm sm:text-base font-semibold truncate">
-                              {item.music.title}
+                              {truncateTitle(item.music.title)}
                             </h3>
                             {item.music.artist && (
                               <p className="text-xs sm:text-sm text-muted-foreground truncate">
@@ -887,7 +888,7 @@ export default function AdminPage() {
                     <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                       <div className="flex-1 min-w-0">
                         <h3 className="text-base sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                          {music.title}
+                          {truncateTitle(music.title)}
                         </h3>
                         {music.artist && (
                           <p className="text-sm text-muted-foreground truncate mt-1">
@@ -1122,7 +1123,7 @@ export default function AdminPage() {
                   .filter((m) => m.id !== swapModal.item?.music.id)
                   .map((music) => (
                     <option key={music.id} value={music.id}>
-                      {music.title}
+                      {truncateTitle(music.title)}
                       {music.artist && ` - ${music.artist}`}
                       {music.isNewOfWeek && " ⭐ (Nova da Semana)"}
                     </option>

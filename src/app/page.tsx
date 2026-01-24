@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Music, Calendar, Star, Eye, ExternalLink } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
+import { truncateTitle } from "@/lib/utils";
 
 interface Music {
   id: string;
@@ -73,7 +74,7 @@ const MusicCard = memo(
                     : "text-foreground group-hover:text-primary"
                 }`}
               >
-                {item.music.title}
+                {truncateTitle(item.music.title)}
               </h3>
               {item.music.artist && (
                 <p className="text-sm text-muted-foreground truncate mt-1">

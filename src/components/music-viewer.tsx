@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, memo } from "react";
+import React, { useState, useEffect, memo, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Music, FileText, Guitar, X } from "lucide-react";
-import { disableBodyScroll, enableBodyScroll } from "@/lib/utils";
+import { disableBodyScroll, enableBodyScroll, truncateTitle } from "@/lib/utils";
 
 interface Music {
   id: string;
@@ -48,6 +48,12 @@ export const MusicViewer = memo(
       };
     }, [open]);
 
+    // Processar acordes com cores (sem transposição)
+    const coloredChords = useMemo(() => {
+      if (!music?.chords) return null;
+      return processChordsWithColors(music.chords);
+    }, [music?.chords]);
+
     if (!music) return null;
 
     return (
@@ -63,7 +69,7 @@ export const MusicViewer = memo(
             
             <DialogTitle className="text-base sm:text-lg md:text-xl font-bold text-foreground flex items-center space-x-2 pr-6 sm:pr-8">
               <Music className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-primary" />
-              <span className="truncate">{music.title}</span>
+              <span className="truncate">{truncateTitle(music.title)}</span>
             </DialogTitle>
             {music.artist && (
               <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1">
@@ -114,7 +120,7 @@ export const MusicViewer = memo(
                 {music.chords ? (
                   <div className="bg-muted/30 rounded-lg py-5 px-2 sm:p-3 md:p-4 lg:p-6">
                     <pre className="whitespace-pre-wrap text-xs sm:text-sm md:text-base leading-relaxed font-mono text-foreground">
-                      {music.chords}
+                      {coloredChords}
                     </pre>
                   </div>
                 ) : (
@@ -142,3 +148,119 @@ export const MusicViewer = memo(
 );
 
 MusicViewer.displayName = "MusicViewer";
+
+// Cor laranja para todos os acordes
+const CHORD_COLOR = "#f97316"; // Laranja
+
+// Mapeamento de notas válidas (para validação)
+const VALID_NOTES = new Set([
+  "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"
+]);
+
+/**
+ * Processa o texto da cifra e identifica acordes para aplicar cor laranja
+ */
+function processChordsWithColors(chordsText: string): React.ReactNode[] {
+  if (!chordsText) return [];
+
+  // Padrão regex para detectar acordes (similar ao chord-transposer.ts)
+  const chordPattern =
+    /\b([A-G](?:#|b)?)((?:m(?:aj|in|7|9|11|13|6|add\d+)?|dim|aug|sus[24]?|maj[79]?|add\d+|6\/9|7(?:sus[24]|b5|#5|b9|#9|#11|b13)?|9(?:sus4|b5|#5)?|11(?:b9)?|13(?:sus4|b9)?|6|°|ø|\+)?)(?:\/([A-G](?:#|b)?))?(?=\s|$|\n|[^\w#b\/])/g;
+
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  const matches: Array<{ index: number; fullMatch: string }> = [];
+
+  // Identificar todos os acordes
+  while ((match = chordPattern.exec(chordsText)) !== null) {
+    const fullMatch = match[0];
+    const rootNote = match[1];
+    const quality = match[2] || "";
+    const bassNote = match[3] || "";
+    const matchIndex = match.index;
+
+    // Verificar contexto antes e depois do match para evitar falsos positivos
+    const charBefore = matchIndex > 0 ? chordsText[matchIndex - 1] : "";
+    const charAfter = matchIndex + fullMatch.length < chordsText.length 
+      ? chordsText[matchIndex + fullMatch.length] 
+      : "";
+
+    // Validar que a nota raiz é válida
+    const isValidRootNote = VALID_NOTES.has(rootNote);
+    
+    // Validar que é um acorde válido:
+    // 1. Deve ter modificadores de acorde (m, 7, etc) OU
+    // 2. Deve ter nota de baixo (ex: C/E) OU
+    // 3. Deve ser uma nota simples (C, D, F#) mas NÃO no meio de uma palavra
+    const hasQuality = quality.length > 0;
+    const hasBass = bassNote.length > 0 && VALID_NOTES.has(bassNote);
+    const isSimpleNote = /^[A-G](?:#|b)?$/.test(fullMatch);
+    
+    // Verificar se não está no meio de uma palavra (evita "Amor", "Dia", etc)
+    const isWordBoundary = 
+      charBefore === "" || 
+      /[\s\n\r\[\](){}|,.;:!?\-]/.test(charBefore) ||
+      !/[a-z]/.test(charBefore); // Não é letra minúscula antes
+    
+    // Verificar se o próximo caractere não é letra minúscula (evita "Amor", "Dia")
+    const isNotInWord = 
+      charAfter === "" || 
+      /[\s\n\r\[\](){}|,.;:!?\-]/.test(charAfter) ||
+      !/[a-z]/.test(charAfter); // Não é letra minúscula depois
+
+    // Validar que é um acorde válido
+    // Para notas simples sem modificadores, ser mais conservador
+    const isValidChord = 
+      isValidRootNote &&
+      (hasQuality || hasBass || (isSimpleNote && isWordBoundary && isNotInWord));
+
+    if (isValidChord) {
+      matches.push({
+        index: matchIndex,
+        fullMatch: fullMatch,
+      });
+    }
+  }
+
+  // Se não houver matches, retornar texto original
+  if (matches.length === 0) {
+    return [chordsText];
+  }
+
+  // Ordenar matches por índice para processar na ordem correta
+  matches.sort((a, b) => a.index - b.index);
+
+  // Processar o texto e aplicar cor laranja
+  matches.forEach((matchInfo, matchIndex) => {
+    // Adicionar texto antes do acorde
+    if (matchInfo.index > lastIndex) {
+      const textBefore = chordsText.substring(lastIndex, matchInfo.index);
+      if (textBefore) {
+        parts.push(textBefore);
+      }
+    }
+
+    // Adicionar acorde colorido de laranja
+    parts.push(
+      <span
+        key={`chord-${matchIndex}`}
+        style={{
+          color: CHORD_COLOR,
+          fontWeight: 600,
+        }}
+      >
+        {matchInfo.fullMatch}
+      </span>
+    );
+
+    lastIndex = matchInfo.index + matchInfo.fullMatch.length;
+  });
+
+  // Adicionar texto restante
+  if (lastIndex < chordsText.length) {
+    parts.push(chordsText.substring(lastIndex));
+  }
+
+  return parts;
+}

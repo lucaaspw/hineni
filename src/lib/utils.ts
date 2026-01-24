@@ -116,6 +116,18 @@ export function getAllSundaysOfYear(year: number): Date[] {
 }
 
 /**
+ * Trunca um título se exceder o limite de caracteres
+ * @param title - Título a ser truncado
+ * @param maxLength - Tamanho máximo (padrão: 15)
+ * @returns Título truncado com "..." se necessário
+ */
+export function truncateTitle(title: string, maxLength: number = 15): string {
+  if (!title) return "";
+  if (title.length <= maxLength) return title;
+  return title.substring(0, maxLength) + "...";
+}
+
+/**
  * Gera escalas rotacionadas para todos os domingos do ano
  * Evita repetições seguidas de combinações
  */

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search, Loader2, Check, X } from "lucide-react";
+import { truncateTitle } from "@/lib/utils";
 
 interface MusicSearchResult {
   title: string;
@@ -165,7 +166,7 @@ export function MusicSearchDialog({
             <div className="space-y-3 p-4 rounded-lg border bg-muted/50">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h4 className="font-semibold text-lg">{result.title}</h4>
+                  <h4 className="font-semibold text-lg">{truncateTitle(result.title)}</h4>
                   <p className="text-sm text-muted-foreground">
                     {result.artist}
                   </p>

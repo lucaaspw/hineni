@@ -16,6 +16,7 @@ import {
 import { Music, Search, Eye, Star, ExternalLink, Edit } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
 import { toast } from "sonner";
+import { truncateTitle } from "@/lib/utils";
 
 interface Music {
   id: string;
@@ -96,7 +97,7 @@ const MusicCard = memo(
                     : "text-foreground group-hover:text-primary"
                 }`}
               >
-                {music.title}
+                {truncateTitle(music.title)}
               </h3>
               {music.artist && (
                 <p className="text-sm text-muted-foreground truncate mt-1">
