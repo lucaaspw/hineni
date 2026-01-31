@@ -9,8 +9,12 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Music, FileText, Guitar, X } from "lucide-react";
 import { disableBodyScroll, enableBodyScroll, truncateTitle } from "@/lib/utils";
+import { detectOriginalKey, transposeChords } from "@/lib/chord-transposer";
+import { AVAILABLE_KEYS, calculateSemitones } from "@/lib/chord-processor";
 
 interface Music {
   id: string;
@@ -31,6 +35,8 @@ interface MusicViewerProps {
 export const MusicViewer = memo(
   ({ music, open, onOpenChange }: MusicViewerProps) => {
     const [activeTab, setActiveTab] = useState("lyrics");
+    const [selectedKey, setSelectedKey] = useState<string>("");
+    const [detectedKey, setDetectedKey] = useState<string | null>(null);
 
     useEffect(() => {
       let scrollY: number | undefined;
@@ -48,11 +54,33 @@ export const MusicViewer = memo(
       };
     }, [open]);
 
-    // Processar acordes com cores (sem transposição)
+    // Detectar tom original quando a música mudar
+    useEffect(() => {
+      if (music?.chords) {
+        const detected = detectOriginalKey(music.chords);
+        setDetectedKey(detected);
+        setSelectedKey(detected || "");
+      } else {
+        setDetectedKey(null);
+        setSelectedKey("");
+      }
+    }, [music?.chords]);
+
+    // Processar acordes com cores e transposição
     const coloredChords = useMemo(() => {
       if (!music?.chords) return null;
-      return processChordsWithColors(music.chords);
-    }, [music?.chords]);
+      
+      // Se houver um tom selecionado e for diferente do detectado, transpor
+      let chordsToProcess = music.chords;
+      if (selectedKey && detectedKey && selectedKey !== detectedKey && selectedKey !== "") {
+        const semitones = calculateSemitones(detectedKey, selectedKey);
+        if (semitones !== 0) {
+          chordsToProcess = transposeChords(music.chords, semitones);
+        }
+      }
+      
+      return processChordsWithColors(chordsToProcess);
+    }, [music?.chords, selectedKey, detectedKey]);
 
     if (!music) return null;
 
@@ -76,6 +104,7 @@ export const MusicViewer = memo(
                 {music.artist}
               </p>
             )}
+            
           </DialogHeader>
 
           <div
@@ -117,6 +146,43 @@ export const MusicViewer = memo(
               </TabsContent>
 
               <TabsContent value="chords" className="space-y-0">
+              {music.chords && (
+              <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                {detectedKey && (
+                  <div className="text-xs sm:text-sm text-muted-foreground">
+                    Tom original: <span className="font-semibold text-foreground">{detectedKey}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 flex-1 sm:flex-initial sm:min-w-[200px]">
+                  <Label htmlFor="key-select-viewer" className="text-xs sm:text-sm whitespace-nowrap">
+                    Transpor para:
+                  </Label>
+                  <Select
+                    id="key-select-viewer"
+                    value={selectedKey || detectedKey || ""}
+                    onChange={(e) => {
+                      const newKey = e.target.value;
+                      // Se selecionar o tom original, resetar para o detectado
+                      if (newKey === detectedKey || newKey === "") {
+                        setSelectedKey(detectedKey || "");
+                      } else {
+                        setSelectedKey(newKey);
+                      }
+                    }}
+                    className="flex-1"
+                  >
+                    <option value={detectedKey || ""}>
+                      {detectedKey || "Tom original"}
+                    </option>
+                    {AVAILABLE_KEYS.filter(key => key !== detectedKey).map((key) => (
+                      <option key={key} value={key}>
+                        {key}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+            )}
                 {music.chords ? (
                   <div className="bg-muted/30 rounded-lg py-5 px-2 sm:p-3 md:p-4 lg:p-6">
                     <pre className="whitespace-pre-wrap text-xs sm:text-sm md:text-base leading-relaxed font-mono text-foreground">

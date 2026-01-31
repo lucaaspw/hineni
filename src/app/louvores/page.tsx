@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Music, Search, Eye, Star, ExternalLink, Edit } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
+import { ChordUpload } from "@/components/chord-upload";
 import { toast } from "sonner";
 import { truncateTitle } from "@/lib/utils";
 
@@ -524,6 +525,16 @@ export default function LouvoresPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-chords">Cifra</Label>
+              <ChordUpload
+                onChordsChange={(chords) =>
+                  setEditFormData({ ...editFormData, chords })
+                }
+                onLyricsChange={(lyrics) =>
+                  setEditFormData({ ...editFormData, lyrics })
+                }
+                currentChords={editFormData.chords}
+                currentLyrics={editFormData.lyrics}
+              />
               <Textarea
                 id="edit-chords"
                 value={editFormData.chords}
@@ -532,7 +543,7 @@ export default function LouvoresPage() {
                 }
                 rows={4}
                 placeholder="Digite a cifra da música..."
-                className="resize-none font-mono text-sm"
+                className="resize-none font-mono text-sm mt-2"
               />
             </div>
 

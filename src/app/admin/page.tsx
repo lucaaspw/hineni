@@ -30,6 +30,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
+import { ChordUpload } from "@/components/chord-upload";
 import { toast } from "sonner";
 import { truncateTitle } from "@/lib/utils";
 
@@ -802,6 +803,16 @@ export default function AdminPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="chords">Cifra</Label>
+                      <ChordUpload
+                        onChordsChange={(chords) =>
+                          setFormData({ ...formData, chords })
+                        }
+                        onLyricsChange={(lyrics) =>
+                          setFormData({ ...formData, lyrics })
+                        }
+                        currentChords={formData.chords}
+                        currentLyrics={formData.lyrics}
+                      />
                       <Textarea
                         id="chords"
                         value={formData.chords}
@@ -810,7 +821,7 @@ export default function AdminPage() {
                         }
                         rows={4}
                         placeholder="Digite a cifra da música..."
-                        className="resize-none font-mono text-sm"
+                        className="resize-none font-mono text-sm mt-2"
                       />
                     </div>
 
@@ -1024,6 +1035,16 @@ export default function AdminPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-chords">Cifra</Label>
+              <ChordUpload
+                onChordsChange={(chords) =>
+                  setEditFormData({ ...editFormData, chords })
+                }
+                onLyricsChange={(lyrics) =>
+                  setEditFormData({ ...editFormData, lyrics })
+                }
+                currentChords={editFormData.chords}
+                currentLyrics={editFormData.lyrics}
+              />
               <Textarea
                 id="edit-chords"
                 value={editFormData.chords}
@@ -1032,7 +1053,7 @@ export default function AdminPage() {
                 }
                 rows={4}
                 placeholder="Digite a cifra da música..."
-                className="resize-none font-mono text-sm"
+                className="resize-none font-mono text-sm mt-2"
               />
             </div>
 
