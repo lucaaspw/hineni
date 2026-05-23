@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getWeekStart, getWeekEnd } from "@/lib/utils";
+import { REPERTOIRE_SIZE } from "@/lib/repertoire";
 
 // Cache em memória para repertório (10 minutos)
 // NOTA: Em ambientes serverless (Vercel, etc.), cada instância tem seu próprio cache.
@@ -118,7 +119,7 @@ export async function GET() {
             position: "asc",
           },
         ],
-        take: 5, // Limitar a 5 músicas (um repertório completo)
+        take: REPERTOIRE_SIZE,
       });
 
       // Se encontrou repertório, agrupar por weekStart e pegar o mais recente
@@ -181,19 +182,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validar posição (deve ser entre 1 e 5)
-    if (position < 1 || position > 5) {
+    if (position < 1 || position > REPERTOIRE_SIZE) {
       return NextResponse.json(
-        { message: "A posição deve ser entre 1 e 5" },
+        { message: `A posição deve ser entre 1 e ${REPERTOIRE_SIZE}` },
         { status: 400 }
       );
     }
 
-    // Verificar se já existem 5 itens no repertório
     const currentRepertoireCount = await prisma.weeklyRepertoire.count();
-    if (currentRepertoireCount >= 5) {
+    if (currentRepertoireCount >= REPERTOIRE_SIZE) {
       return NextResponse.json(
-        { message: "O repertório já está completo (máximo de 5 músicas)" },
+        { message: `O repertório já está completo (máximo de ${REPERTOIRE_SIZE} músicas)` },
         { status: 400 }
       );
     }

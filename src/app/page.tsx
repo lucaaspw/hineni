@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Music, Calendar, Star, Eye, ExternalLink } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
 import { truncateTitle } from "@/lib/utils";
+import { REPERTOIRE_SIZE } from "@/lib/repertoire";
 
 interface Music {
   id: string;
@@ -205,7 +206,7 @@ export default function Home() {
 
   // Memoização dos skeletons
   const skeletonCards = useMemo(
-    () => Array.from({ length: 6 }, (_, i) => <SkeletonCard key={i} />),
+    () => Array.from({ length: REPERTOIRE_SIZE }, (_, i) => <SkeletonCard key={i} />),
     []
   );
 

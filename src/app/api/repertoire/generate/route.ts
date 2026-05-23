@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { AUTH_CONFIG } from "@/lib/auth";
 import { getWeekStart, getWeekEnd } from "@/lib/utils";
+import {
+  REPERTOIRE_SIZE,
+  getOtherMusicsCount,
+  getRepertoirePositions,
+} from "@/lib/repertoire";
 
 // Middleware para verificar autenticação
 async function verifyAuth(request: NextRequest) {
@@ -64,17 +69,15 @@ export async function POST(request: NextRequest) {
       return shuffled;
     }
 
-    // Calcular quantas músicas são necessárias (5 total, menos 1 se houver música nova da semana)
-    const musicsNeeded = newOfWeekMusic ? 4 : 5;
+    const musicsNeeded = getOtherMusicsCount(!!newOfWeekMusic);
 
-    // Verificar se há músicas suficientes antes de embaralhar
     if (allAvailableMusics.length < musicsNeeded) {
       const totalMusics = (newOfWeekMusic ? 1 : 0) + allAvailableMusics.length;
       return NextResponse.json(
         {
-          message: `Não há músicas suficientes para gerar o repertório. Necessário: 5, Disponível: ${totalMusics}`,
+          message: `Não há músicas suficientes para gerar o repertório. Necessário: ${REPERTOIRE_SIZE}, Disponível: ${totalMusics}`,
           available: totalMusics,
-          required: 5,
+          required: REPERTOIRE_SIZE,
         },
         { status: 400 }
       );
@@ -97,10 +100,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Posições 2-5: Outras músicas
-    const positionsToFill = newOfWeekMusic
-      ? [2, 3, 4, 5]
-      : [1, 2, 3, 4, 5];
+    const positionsToFill = getRepertoirePositions(!!newOfWeekMusic);
 
     otherMusics.forEach((music, index) => {
       const position = positionsToFill[index];

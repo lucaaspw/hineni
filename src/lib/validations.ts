@@ -75,9 +75,16 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
+import { REPERTOIRE_SIZE } from "./repertoire";
+
 // Schema para validação de repertório
 export const repertoireSchema = z.object({
-  positions: z.array(z.string()).length(6, "É necessário fornecer 6 posições"),
+  positions: z
+    .array(z.string())
+    .length(
+      REPERTOIRE_SIZE,
+      `É necessário fornecer ${REPERTOIRE_SIZE} posições`
+    ),
 });
 
 // Tipos derivados dos schemas

@@ -5,7 +5,7 @@ Sistema moderno para gerenciamento de repertório de músicas para igreja, desen
 ## ✨ Funcionalidades
 
 - 🎵 **Biblioteca de Músicas**: Cadastro e visualização de letras e cifras
-- 📅 **Repertório Semanal**: Gerenciamento de 6 músicas por semana
+- 📅 **Repertório Semanal**: Gerenciamento de 4 músicas por semana
 - 🔐 **Área Administrativa**: Login seguro para administradores
 - 📱 **PWA Ready**: Funciona offline e pode ser instalado como app
 - 🌙 **Tema Escuro/Claro**: Interface adaptável às preferências do usuário

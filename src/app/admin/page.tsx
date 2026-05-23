@@ -33,6 +33,7 @@ import { MusicViewer } from "@/components/music-viewer";
 import { ChordUpload } from "@/components/chord-upload";
 import { toast } from "sonner";
 import { truncateTitle } from "@/lib/utils";
+import { REPERTOIRE_SIZE } from "@/lib/repertoire";
 
 interface Music {
   id: string;
@@ -581,7 +582,7 @@ export default function AdminPage() {
                           }
                           required
                         >
-                          {Array.from({ length: 5 }, (_, i) => i + 1).map((pos) => (
+                          {Array.from({ length: REPERTOIRE_SIZE }, (_, i) => i + 1).map((pos) => (
                             <option key={pos} value={pos}>
                               Posição {pos}
                             </option>

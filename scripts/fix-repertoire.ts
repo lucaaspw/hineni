@@ -1,4 +1,8 @@
 import { PrismaClient } from '@prisma/client';
+import {
+  getOtherMusicsCount,
+  getRepertoirePositions,
+} from '../src/lib/repertoire';
 
 const prisma = new PrismaClient();
 
@@ -127,12 +131,12 @@ async function main() {
       orderBy: [
         { createdAt: 'desc' }, // Músicas mais recentes primeiro
       ],
-      take: 5 - (newOfWeekMusic ? 1 : 0), // Preencher até 5 posições
+      take: getOtherMusicsCount(!!newOfWeekMusic),
       select: { id: true, title: true, artist: true },
     });
 
     // Adicionar outras músicas
-    const positionsToFill = newOfWeekMusic ? [2, 3, 4, 5] : [1, 2, 3, 4, 5];
+    const positionsToFill = getRepertoirePositions(!!newOfWeekMusic);
     
     otherMusics.forEach((music, index) => {
       const position = positionsToFill[index];
