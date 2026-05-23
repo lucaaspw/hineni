@@ -21,6 +21,7 @@ model Music {
   chords       String?
   externalLink String?  // Link do YouTube ou Spotify
   isNewOfWeek  Boolean  @default(false)
+  tags         String[] @default([])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

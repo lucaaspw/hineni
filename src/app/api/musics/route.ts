@@ -52,6 +52,7 @@ export async function GET() {
         chords: true,
         externalLink: true,
         isNewOfWeek: true,
+        tags: true,
         createdAt: true,
       },
       orderBy: { createdAt: "desc" },
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, artist, lyrics, chords, externalLink, isNewOfWeek } =
+    const { title, artist, lyrics, chords, externalLink, isNewOfWeek, tags } =
       validationResult.data;
 
     // Query otimizada para verificar duplicatas
@@ -155,6 +156,7 @@ export async function POST(request: NextRequest) {
         chords,
         externalLink: externalLink || null,
         isNewOfWeek,
+        tags,
       },
       select: {
         id: true,
@@ -164,6 +166,7 @@ export async function POST(request: NextRequest) {
         chords: true,
         externalLink: true,
         isNewOfWeek: true,
+        tags: true,
         createdAt: true,
       },
     });
@@ -203,7 +206,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { id, title, artist, lyrics, chords, externalLink, isNewOfWeek } =
+    const { id, title, artist, lyrics, chords, externalLink, isNewOfWeek, tags } =
       validationResult.data;
 
     // Query otimizada para verificar duplicatas
@@ -265,6 +268,7 @@ export async function PUT(request: NextRequest) {
         chords,
         externalLink: externalLink || null,
         isNewOfWeek,
+        tags,
       },
       select: {
         id: true,
@@ -274,6 +278,7 @@ export async function PUT(request: NextRequest) {
         chords: true,
         externalLink: true,
         isNewOfWeek: true,
+        tags: true,
         createdAt: true,
       },
     });

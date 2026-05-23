@@ -34,6 +34,7 @@ import { ChordUpload } from "@/components/chord-upload";
 import { toast } from "sonner";
 import { truncateTitle } from "@/lib/utils";
 import { REPERTOIRE_SIZE } from "@/lib/repertoire";
+import { MusicTagBadge } from "@/components/music-tag-badge";
 
 interface Music {
   id: string;
@@ -43,6 +44,7 @@ interface Music {
   chords?: string;
   externalLink?: string;
   isNewOfWeek: boolean;
+  tags?: string[];
 }
 
 interface RepertoireItem {
@@ -909,6 +911,9 @@ export default function AdminPage() {
                         )}
                       </div>
                       <div className="flex items-center space-x-2 flex-shrink-0">
+                        {music.tags?.map((tag) => (
+                          <MusicTagBadge key={tag} tag={tag} />
+                        ))}
                         {music.isNewOfWeek && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
                             <Star className="w-3 h-3 mr-1" />

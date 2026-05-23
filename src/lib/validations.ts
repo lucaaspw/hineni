@@ -32,6 +32,7 @@ export const musicSchema = z.object({
       }
     ),
   isNewOfWeek: z.boolean().default(false),
+  tags: z.array(z.string()).default([]),
 });
 
 // Schema para validação de música (edição - inclui id)
@@ -67,6 +68,7 @@ export const musicEditSchema = z.object({
       }
     ),
   isNewOfWeek: z.boolean().default(false),
+  tags: z.array(z.string()).default([]),
 });
 
 // Schema para validação de login

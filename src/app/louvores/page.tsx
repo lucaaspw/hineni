@@ -18,6 +18,7 @@ import { MusicViewer } from "@/components/music-viewer";
 import { ChordUpload } from "@/components/chord-upload";
 import { toast } from "sonner";
 import { truncateTitle } from "@/lib/utils";
+import { MusicTagBadge } from "@/components/music-tag-badge";
 
 interface Music {
   id: string;
@@ -27,6 +28,7 @@ interface Music {
   chords?: string;
   externalLink?: string;
   isNewOfWeek: boolean;
+  tags?: string[];
 }
 
 // Cache para evitar re-fetch desnecessário (aumentado para 10 minutos)
@@ -107,6 +109,9 @@ const MusicCard = memo(
               )}
             </div>
             <div className="flex items-center space-x-2 flex-shrink-0">
+              {music.tags?.map((tag) => (
+                <MusicTagBadge key={tag} tag={tag} />
+              ))}
               {music.isNewOfWeek && (
                 <span className="inline-flex items-center h-6 w-6 justify-center rounded-full text-sm font-semibold new-week-music-badge">
                   <Star className="w-4 h-4" />
