@@ -27,6 +27,7 @@ import {
   Eye,
   Edit,
   Calendar,
+  Copy,
   ExternalLink,
 } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
@@ -34,6 +35,7 @@ import { ChordUpload } from "@/components/chord-upload";
 import { toast } from "sonner";
 import { truncateTitle } from "@/lib/utils";
 import { REPERTOIRE_SIZE } from "@/lib/repertoire";
+import { formatRepertoireForWhatsApp } from "@/lib/format-repertoire-whatsapp";
 import { MusicTagBadge } from "@/components/music-tag-badge";
 
 interface Music {
@@ -451,6 +453,24 @@ export default function AdminPage() {
     }
   };
 
+  const handleCopyRepertoireForWhatsApp = async () => {
+    if (repertoire.length === 0) {
+      toast.error("Não há repertório para copiar");
+      return;
+    }
+
+    const message = formatRepertoireForWhatsApp(repertoire, {
+      siteUrl: window.location.origin,
+    });
+
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success("Repertório copiado! Cole no grupo do WhatsApp.");
+    } catch {
+      toast.error("Não foi possível copiar. Tente novamente.");
+    }
+  };
+
   // Memoização das músicas filtradas para o select
   const availableMusicsForRepertoire = useMemo(() => {
     return musics.filter(music => 
@@ -510,6 +530,15 @@ export default function AdminPage() {
                 <span>Repertório Semanal ({repertoire.length})</span>
               </h2>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={handleCopyRepertoireForWhatsApp}
+                  disabled={repertoire.length === 0}
+                  className="w-full sm:w-auto"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copiar para WhatsApp
+                </Button>
                 <Button
                   variant="outline"
                   onClick={handleGenerateRepertoire}
