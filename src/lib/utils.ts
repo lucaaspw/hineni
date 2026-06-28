@@ -73,6 +73,20 @@ export function getWeekEnd(date: Date = new Date()): Date {
 }
 
 /**
+ * Início do mês civil (dia 1 às 00:00)
+ */
+export function getMonthStart(date: Date = new Date()): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
+}
+
+/**
+ * Início do próximo mês (fim exclusivo do mês atual)
+ */
+export function getMonthEnd(date: Date = new Date()): Date {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 1, 0, 0, 0, 0);
+}
+
+/**
  * Gera todas as combinações possíveis de k elementos de um array
  */
 function combinations<T>(arr: T[], k: number): T[][] {
@@ -90,6 +104,27 @@ function combinations<T>(arr: T[], k: number): T[][] {
   }
 
   return result;
+}
+
+/**
+ * Retorna todos os domingos de um mês civil
+ */
+export function getSundaysInMonth(date: Date = new Date()): Date[] {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const sundays: Date[] = [];
+  const cursor = new Date(year, month, 1, 12, 0, 0, 0);
+
+  while (cursor.getDay() !== 0) {
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  while (cursor.getMonth() === month) {
+    sundays.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 7);
+  }
+
+  return sundays;
 }
 
 /**

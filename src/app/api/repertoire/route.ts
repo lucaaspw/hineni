@@ -2,28 +2,38 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getWeekStart, getWeekEnd } from "@/lib/utils";
 import { REPERTOIRE_SIZE } from "@/lib/repertoire";
+import {
+  fetchMonthRepertoireView,
+  fetchPublicRepertoireView,
+  normalizePublicRepertoireView,
+} from "@/lib/repertoire-query";
 
-// Cache em memória para repertório (10 minutos)
-// NOTA: Em ambientes serverless (Vercel, etc.), cada instância tem seu próprio cache.
-// Para produção em escala, considere usar Redis ou similar.
-let repertoireCache: unknown[] | null = null;
+let repertoireCache: unknown | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_DURATION = 1 * 60 * 1000; // 1 minutos
+const CACHE_DURATION = 1 * 60 * 1000;
 
-// Função para invalidar cache
 function invalidateRepertoireCache() {
   repertoireCache = null;
   cacheTimestamp = 0;
 }
 
-// GET - Listar repertório
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const view = request.nextUrl.searchParams.get("view");
     const now = Date.now();
 
-    // Verificar cache
+    if (view === "month") {
+      const data = await fetchMonthRepertoireView(prisma);
+      return NextResponse.json(data, {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "X-Cache": "MISS",
+        },
+      });
+    }
+
     if (repertoireCache && now - cacheTimestamp < CACHE_DURATION) {
-      return NextResponse.json(repertoireCache, {
+      return NextResponse.json(normalizePublicRepertoireView(repertoireCache), {
         headers: {
           "Cache-Control": "public, max-age=600, s-maxage=1200",
           "X-Cache": "HIT",
@@ -31,64 +41,20 @@ export async function GET() {
       });
     }
 
-    // Calcular início e fim da semana atual para filtrar apenas o repertório desta semana
-    // A semana começa na segunda-feira às 03h
-    const weekStart = getWeekStart();
-    const weekEnd = getWeekEnd();
+    let data = await fetchPublicRepertoireView(prisma);
 
-    // Query otimizada com seleção específica de campos
-    // Filtra apenas o repertório da semana atual
-    let repertoire = await prisma.weeklyRepertoire.findMany({
-      where: {
-        weekStart: {
-          gte: weekStart,
-          lt: weekEnd,
-        },
-      },
-      select: {
-        id: true,
-        position: true,
-        isManual: true,
-        weekStart: true,
-        music: {
-          select: {
-            id: true,
-            title: true,
-            artist: true,
-            lyrics: true,
-            chords: true,
-            externalLink: true,
-            isNewOfWeek: true,
-          },
-        },
-      },
-      orderBy: [
-        {
-          music: {
-            isNewOfWeek: "desc", // Música nova da semana primeiro
-          },
-        },
-        {
-          position: "asc", // Depois por posição
-        },
-      ],
-    });
+    if (data.currentWeek.length === 0 && data.monthNew.length === 0) {
+      const weekStart = getWeekStart();
+      const weekEnd = getWeekEnd();
+      console.log(
+        `[Repertório] Nenhum repertório para semana atual (${weekStart.toISOString()} - ${weekEnd.toISOString()}), buscando mais recente...`
+      );
 
-    // Se não encontrou repertório com a nova lógica, buscar o mais recente
-    // (pode ser que os dados antigos estejam com formato diferente)
-    if (repertoire.length === 0) {
-      console.log(`[Repertório] Nenhum repertório encontrado para semana atual (${weekStart.toISOString()} - ${weekEnd.toISOString()}), buscando mais recente...`);
-      
-      // Buscar o repertório mais recente (últimos 7 dias)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      repertoire = await prisma.weeklyRepertoire.findMany({
-        where: {
-          weekStart: {
-            gte: sevenDaysAgo,
-          },
-        },
+
+      const fallback = await prisma.weeklyRepertoire.findMany({
+        where: { weekStart: { gte: sevenDaysAgo } },
         select: {
           id: true,
           position: true,
@@ -103,59 +69,45 @@ export async function GET() {
               chords: true,
               externalLink: true,
               isNewOfWeek: true,
+              tags: true,
             },
           },
         },
-        orderBy: [
-          {
-            weekStart: "desc", // Mais recente primeiro
-          },
-          {
-            music: {
-              isNewOfWeek: "desc",
-            },
-          },
-          {
-            position: "asc",
-          },
-        ],
-        take: REPERTOIRE_SIZE,
+        orderBy: [{ weekStart: "desc" }, { position: "asc" }],
       });
 
-      // Se encontrou repertório, agrupar por weekStart e pegar o mais recente
-      if (repertoire.length > 0) {
-        // Agrupar por weekStart
-        const groupedByWeek = repertoire.reduce((acc, item) => {
-          const weekKey = item.weekStart.toISOString().split('T')[0];
-          if (!acc[weekKey]) {
-            acc[weekKey] = [];
-          }
-          acc[weekKey].push(item);
-          return acc;
-        }, {} as Record<string, typeof repertoire>);
+      if (fallback.length > 0) {
+        const groupedByWeek = fallback.reduce(
+          (acc, item) => {
+            const weekKey = item.weekStart.toISOString();
+            if (!acc[weekKey]) acc[weekKey] = [];
+            acc[weekKey].push(item);
+            return acc;
+          },
+          {} as Record<string, typeof fallback>
+        );
 
-        // Pegar o grupo mais recente
-        const latestWeek = Object.keys(groupedByWeek).sort().reverse()[0];
-        repertoire = groupedByWeek[latestWeek] || [];
-        
-        console.log(`[Repertório] Encontrado repertório antigo com ${repertoire.length} músicas da semana ${latestWeek}`);
-      } else {
-        console.log('[Repertório] Nenhum repertório encontrado nos últimos 7 dias');
+        const latestWeekKey = Object.keys(groupedByWeek).sort().reverse()[0];
+        data = {
+          monthNew: [],
+          currentWeek: (groupedByWeek[latestWeekKey] || []).slice(
+            0,
+            REPERTOIRE_SIZE
+          ),
+        };
       }
-    } else {
-      console.log(`[Repertório] Encontrado ${repertoire.length} músicas para a semana atual`);
     }
 
-    // Atualizar cache apenas se encontrou repertório
-    if (repertoire.length > 0) {
-      repertoireCache = repertoire;
+    data = normalizePublicRepertoireView(data);
+
+    if (data.currentWeek.length > 0 || data.monthNew.length > 0) {
+      repertoireCache = data;
       cacheTimestamp = now;
     } else {
-      // Se não encontrou, invalidar cache para forçar nova busca
       invalidateRepertoireCache();
     }
 
-    return NextResponse.json(repertoire, {
+    return NextResponse.json(data, {
       headers: {
         "Cache-Control": "public, max-age=600, s-maxage=1200",
         "X-Cache": "MISS",
@@ -170,7 +122,6 @@ export async function GET() {
   }
 }
 
-// POST - Adicionar ao repertório
 export async function POST(request: NextRequest) {
   try {
     const { musicId, position, isManual } = await request.json();
@@ -189,15 +140,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const currentRepertoireCount = await prisma.weeklyRepertoire.count();
-    if (currentRepertoireCount >= REPERTOIRE_SIZE) {
+    const weekStart = getWeekStart();
+    const weekEnd = getWeekEnd();
+
+    const currentWeekCount = await prisma.weeklyRepertoire.count({
+      where: {
+        weekStart: { gte: weekStart, lt: weekEnd },
+      },
+    });
+
+    if (currentWeekCount >= REPERTOIRE_SIZE) {
       return NextResponse.json(
-        { message: `O repertório já está completo (máximo de ${REPERTOIRE_SIZE} músicas)` },
+        {
+          message: `A semana já está completa (máximo de ${REPERTOIRE_SIZE} músicas)`,
+        },
         { status: 400 }
       );
     }
 
-    // Query otimizada para verificar se a música existe
     const music = await prisma.music.findUnique({
       where: { id: musicId },
       select: { id: true },
@@ -210,19 +170,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calcular o início e fim da semana (segunda-feira às 03h) para validações e criação
-    // A semana começa na segunda-feira às 03h
-    const weekStart = getWeekStart();
-    const weekEnd = getWeekEnd();
-    
-    // Verificar se a música já está no repertório desta semana
     const musicAlreadyInRepertoire = await prisma.weeklyRepertoire.findFirst({
-      where: { 
+      where: {
         musicId,
-        weekStart: {
-          gte: weekStart,
-          lt: weekEnd,
-        },
+        weekStart: { gte: weekStart, lt: weekEnd },
       },
       select: { id: true },
     });
@@ -233,15 +184,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
-    // Query otimizada para verificar se a posição já está ocupada nesta semana
+
     const existingItem = await prisma.weeklyRepertoire.findFirst({
-      where: { 
+      where: {
         position,
-        weekStart: {
-          gte: weekStart,
-          lt: weekEnd,
-        },
+        weekStart: { gte: weekStart, lt: weekEnd },
       },
       select: { id: true },
     });
@@ -252,7 +199,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     const repertoireItem = await prisma.weeklyRepertoire.create({
       data: {
         musicId,
@@ -274,44 +221,42 @@ export async function POST(request: NextRequest) {
             chords: true,
             externalLink: true,
             isNewOfWeek: true,
+            tags: true,
           },
         },
       },
     });
 
-    // Invalidar cache
     invalidateRepertoireCache();
 
     return NextResponse.json(repertoireItem, { status: 201 });
   } catch (error) {
     console.error("Erro ao adicionar ao repertório:", error);
-    
-    // Verificar se é erro de constraint única (posição duplicada)
+
     if (error instanceof Error && error.message.includes("Unique constraint")) {
       return NextResponse.json(
         { message: "Esta posição já está ocupada nesta semana" },
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
-      { 
+      {
         message: "Erro interno do servidor",
-        ...(process.env.NODE_ENV === "development" && { 
-          error: error instanceof Error ? error.message : "Erro desconhecido" 
-        })
+        ...(process.env.NODE_ENV === "development" && {
+          error: error instanceof Error ? error.message : "Erro desconhecido",
+        }),
       },
       { status: 500 }
     );
   }
 }
 
-// PUT - Trocar música do repertório
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     const { id, musicId } = body;
-    
+
     if (!id || !musicId) {
       return NextResponse.json(
         { message: "ID do item e ID da música são obrigatórios" },
@@ -319,12 +264,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Query otimizada para verificar se a música existe
-    const music = await prisma.music.findUnique({ 
+    const music = await prisma.music.findUnique({
       where: { id: musicId },
       select: { id: true, title: true },
     });
-    
+
     if (!music) {
       return NextResponse.json(
         { message: "Música não encontrada" },
@@ -332,7 +276,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verificar se o item do repertório existe
     const existingItem = await prisma.weeklyRepertoire.findUnique({
       where: { id },
       select: { id: true, position: true, musicId: true },
@@ -345,7 +288,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Atualizar o item do repertório com seleção otimizada
     const updated = await prisma.weeklyRepertoire.update({
       where: { id },
       data: { musicId },
@@ -363,37 +305,36 @@ export async function PUT(request: NextRequest) {
             chords: true,
             externalLink: true,
             isNewOfWeek: true,
+            tags: true,
           },
         },
       },
     });
 
-    // Invalidar cache
     invalidateRepertoireCache();
 
     return NextResponse.json(updated, {
       headers: {
         "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0",
+        Pragma: "no-cache",
+        Expires: "0",
         "X-Cache-Invalidated": "true",
       },
     });
   } catch (error) {
     console.error("Erro ao trocar música do repertório:", error);
     return NextResponse.json(
-      { 
+      {
         message: "Erro interno do servidor",
-        ...(process.env.NODE_ENV === "development" && { 
-          error: error instanceof Error ? error.message : "Erro desconhecido" 
-        })
+        ...(process.env.NODE_ENV === "development" && {
+          error: error instanceof Error ? error.message : "Erro desconhecido",
+        }),
       },
       { status: 500 }
     );
   }
 }
 
-// DELETE - Remover do repertório
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -410,18 +351,17 @@ export async function DELETE(request: NextRequest) {
       where: { id },
     });
 
-    // Invalidar cache
     invalidateRepertoireCache();
 
     return NextResponse.json({ message: "Item removido com sucesso" });
   } catch (error) {
     console.error("Erro ao remover do repertório:", error);
     return NextResponse.json(
-      { 
+      {
         message: "Erro interno do servidor",
-        ...(process.env.NODE_ENV === "development" && { 
-          error: error instanceof Error ? error.message : "Erro desconhecido" 
-        })
+        ...(process.env.NODE_ENV === "development" && {
+          error: error instanceof Error ? error.message : "Erro desconhecido",
+        }),
       },
       { status: 500 }
     );

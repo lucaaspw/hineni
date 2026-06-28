@@ -7,6 +7,8 @@ import { Music, Calendar, Star, Eye, ExternalLink } from "lucide-react";
 import { MusicViewer } from "@/components/music-viewer";
 import { truncateTitle } from "@/lib/utils";
 import { REPERTOIRE_SIZE } from "@/lib/repertoire";
+import { isNewCatalogMusic } from "@/lib/music-tags";
+import { normalizePublicRepertoireView } from "@/lib/repertoire-query";
 
 interface Music {
   id: string;
@@ -15,7 +17,7 @@ interface Music {
   lyrics: string;
   chords?: string;
   externalLink?: string;
-  isNewOfWeek: boolean;
+  tags?: string[];
 }
 
 interface RepertoireItem {
@@ -24,6 +26,13 @@ interface RepertoireItem {
   isManual: boolean;
   music: Music;
 }
+
+interface RepertoirePublicView {
+  monthNew: RepertoireItem[];
+  currentWeek: RepertoireItem[];
+}
+
+const EMPTY_VIEW: RepertoirePublicView = { monthNew: [], currentWeek: [] };
 
 // Componente de loading otimizado
 const LoadingSpinner = memo(() => (
@@ -57,10 +66,12 @@ const MusicCard = memo(
       onViewMusic(item.music);
     }, [item.music, onViewMusic]);
 
+    const isNova = isNewCatalogMusic(item.music.tags);
+
     return (
       <Card
         className={`group hover:shadow-lg transition-all duration-200 hover:-translate-y-1 border-0 backdrop-blur-sm ${
-          item.music.isNewOfWeek
+          isNova
             ? "new-week-music-card"
             : "bg-gradient-to-r from-card to-card/50"
         }`}
@@ -70,7 +81,7 @@ const MusicCard = memo(
             <div className="flex-1 min-w-0">
               <h3
                 className={`text-base sm:text-lg font-semibold transition-colors truncate ${
-                  item.music.isNewOfWeek
+                  isNova
                     ? "new-week-music-title group-hover:text-green-600 dark:group-hover:text-green-300"
                     : "text-foreground group-hover:text-primary"
                 }`}
@@ -84,7 +95,7 @@ const MusicCard = memo(
               )}
             </div>
             <div className="flex items-center space-x-2 flex-shrink-0">
-              {item.music.isNewOfWeek && (
+              {isNova && (
                 <span className="inline-flex items-center h-6 w-6 justify-center rounded-full text-sm font-semibold new-week-music-badge">
                   <Star className="w-4 h-4" />
                 </span>
@@ -129,7 +140,6 @@ const MusicCard = memo(
 
 MusicCard.displayName = "MusicCard";
 
-// Componente de skeleton otimizado
 const SkeletonCard = memo(() => (
   <Card className="group hover:shadow-lg transition-all duration-200 hover:-translate-y-1 border-0 bg-gradient-to-r from-card to-card/50 backdrop-blur-sm opacity-60">
     <CardHeader className="pb-3 sm:pb-4">
@@ -154,23 +164,30 @@ const SkeletonCard = memo(() => (
 
 SkeletonCard.displayName = "SkeletonCard";
 
-// Cache para evitar re-fetch desnecessário (aumentado para 10 minutos)
-let repertoireCache: RepertoireItem[] | null = null;
+let repertoireCache: RepertoirePublicView | null = null;
 let cacheTimestamp = 0;
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
+const CACHE_DURATION = 10 * 60 * 1000;
+const CACHE_VERSION = 2;
+let cacheVersion = 0;
+
+function readCachedView(): RepertoirePublicView | null {
+  if (!repertoireCache || cacheVersion !== CACHE_VERSION) {
+    return null;
+  }
+  return normalizePublicRepertoireView(repertoireCache) as RepertoirePublicView;
+}
 
 export default function Home() {
-  const [repertoire, setRepertoire] = useState<RepertoireItem[]>([]);
+  const [repertoireView, setRepertoireView] = useState<RepertoirePublicView>(EMPTY_VIEW);
   const [loading, setLoading] = useState(true);
   const [selectedMusic, setSelectedMusic] = useState<Music | null>(null);
 
-  // Memoização da função de fetch com cache otimizado
   const fetchRepertoire = useCallback(async () => {
     const now = Date.now();
 
-    // Verificar cache primeiro
-    if (repertoireCache && now - cacheTimestamp < CACHE_DURATION) {
-      setRepertoire(repertoireCache);
+    const cached = readCachedView();
+    if (cached && now - cacheTimestamp < CACHE_DURATION) {
+      setRepertoireView(cached);
       setLoading(false);
       return;
     }
@@ -183,10 +200,11 @@ export default function Home() {
       });
       if (response.ok) {
         const data = await response.json();
-        // Atualizar cache
-        repertoireCache = data;
+        const view = normalizePublicRepertoireView(data) as RepertoirePublicView;
+        repertoireCache = view;
+        cacheVersion = CACHE_VERSION;
         cacheTimestamp = now;
-        setRepertoire(data);
+        setRepertoireView(view);
       }
     } catch (error) {
       console.error("Erro ao carregar repertório:", error);
@@ -199,25 +217,17 @@ export default function Home() {
     fetchRepertoire();
   }, [fetchRepertoire]);
 
-  // Memoização da função de visualização
   const handleViewMusic = useCallback((music: Music) => {
     setSelectedMusic(music);
   }, []);
 
-  // Memoização dos skeletons
   const skeletonCards = useMemo(
     () => Array.from({ length: REPERTOIRE_SIZE }, (_, i) => <SkeletonCard key={i} />),
     []
   );
 
-  // Memoização do grid de músicas
-  const musicGrid = useMemo(() => {
-    if (repertoire.length === 0) return skeletonCards;
-
-    return repertoire.map((item) => (
-      <MusicCard key={item.id} item={item} onViewMusic={handleViewMusic} />
-    ));
-  }, [repertoire, handleViewMusic, skeletonCards]);
+  const hasContent =
+    repertoireView.monthNew.length > 0 || repertoireView.currentWeek.length > 0;
 
   if (loading) {
     return <LoadingSpinner />;
@@ -225,7 +235,6 @@ export default function Home() {
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)]">
-      {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/10">
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
         <div className="relative container mx-auto px-4 py-6 sm:py-8">
@@ -243,15 +252,44 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Repertoire Section */}
-      <div className="container mx-auto px-4 py-6 sm:py-8">
-        {/* Todas as Músicas */}
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-2  lg:grid-cols-3 lg:gap-8">
-          {musicGrid}
-        </div>
+      <div className="container mx-auto px-4 py-6 sm:py-8 space-y-8">
+        {!hasContent ? (
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+            {skeletonCards}
+          </div>
+        ) : (
+          <>
+            {repertoireView.monthNew.length > 0 && (
+              <section className="space-y-4">
+                <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  Músicas novas do mês
+                </h2>
+                <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+                  {repertoireView.monthNew.map((item) => (
+                    <MusicCard key={item.id} item={item} onViewMusic={handleViewMusic} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="space-y-4">
+              <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Esta semana
+              </h2>
+              <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+                {repertoireView.currentWeek.length > 0
+                  ? repertoireView.currentWeek.map((item) => (
+                      <MusicCard key={item.id} item={item} onViewMusic={handleViewMusic} />
+                    ))
+                  : skeletonCards}
+              </div>
+            </section>
+          </>
+        )}
       </div>
 
-      {/* Music Viewer Dialog */}
       <MusicViewer
         music={selectedMusic}
         open={!!selectedMusic}

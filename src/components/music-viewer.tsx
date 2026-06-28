@@ -23,7 +23,8 @@ interface Music {
   lyrics: string;
   chords?: string;
   externalLink?: string;
-  isNewOfWeek: boolean;
+  isNewOfWeek?: boolean;
+  tags?: string[];
 }
 
 interface MusicViewerProps {

@@ -35,8 +35,10 @@ import { ChordUpload } from "@/components/chord-upload";
 import { toast } from "sonner";
 import { truncateTitle } from "@/lib/utils";
 import { REPERTOIRE_SIZE } from "@/lib/repertoire";
-import { formatRepertoireForWhatsApp } from "@/lib/format-repertoire-whatsapp";
+import { formatMonthRepertoireForWhatsApp } from "@/lib/format-repertoire-whatsapp";
 import { MusicTagBadge } from "@/components/music-tag-badge";
+import { normalizeMonthRepertoireView } from "@/lib/repertoire-query";
+import { isNewCatalogMusic } from "@/lib/music-tags";
 
 interface Music {
   id: string;
@@ -56,15 +58,85 @@ interface RepertoireItem {
   music: Music;
 }
 
+interface RepertoireWeekView {
+  weekNumber: number;
+  sunday: string;
+  weekStart: string;
+  items: RepertoireItem[];
+}
+
+interface RepertoireMonthView {
+  monthNew: RepertoireItem[];
+  weeks: RepertoireWeekView[];
+}
+
+const EMPTY_REPERTOIRE_VIEW: RepertoireMonthView = { monthNew: [], weeks: [] };
+
+function flattenRepertoireItems(view: RepertoireMonthView): RepertoireItem[] {
+  return [...view.monthNew, ...view.weeks.flatMap((w) => w.items)];
+}
+
+function hasRepertoire(view: RepertoireMonthView): boolean {
+  return view.monthNew.length > 0 || view.weeks.some((w) => w.items.length > 0);
+}
+
+function updateItemInView(
+  view: RepertoireMonthView,
+  updatedItem: RepertoireItem
+): RepertoireMonthView {
+  return {
+    monthNew: view.monthNew.map((item) =>
+      item.id === updatedItem.id ? updatedItem : item
+    ),
+    weeks: view.weeks.map((week) => ({
+      ...week,
+      items: week.items.map((item) =>
+        item.id === updatedItem.id ? updatedItem : item
+      ),
+    })),
+  };
+}
+
+function removeMusicFromView(
+  view: RepertoireMonthView,
+  musicId: string
+): RepertoireMonthView {
+  return {
+    monthNew: view.monthNew.filter((item) => item.music.id !== musicId),
+    weeks: view.weeks.map((week) => ({
+      ...week,
+      items: week.items.filter((item) => item.music.id !== musicId),
+    })),
+  };
+}
+
+function updateMusicInView(
+  view: RepertoireMonthView,
+  updatedMusic: Music
+): RepertoireMonthView {
+  const mapItem = (item: RepertoireItem) =>
+    item.music.id === updatedMusic.id ? { ...item, music: updatedMusic } : item;
+
+  return {
+    monthNew: view.monthNew.map(mapItem),
+    weeks: view.weeks.map((week) => ({
+      ...week,
+      items: week.items.map(mapItem),
+    })),
+  };
+}
+
 // Cache local para evitar re-fetch desnecessário
 let localMusicsCache: Music[] | null = null;
-let localRepertoireCache: RepertoireItem[] | null = null;
+let localRepertoireCache: RepertoireMonthView | null = null;
 let cacheTimestamp = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 export default function AdminPage() {
   const [musics, setMusics] = useState<Music[]>([]);
-  const [repertoire, setRepertoire] = useState<RepertoireItem[]>([]);
+  const [repertoireView, setRepertoireView] = useState<RepertoireMonthView>(
+    EMPTY_REPERTOIRE_VIEW
+  );
   const [selectedMusic, setSelectedMusic] = useState<Music | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -125,7 +197,7 @@ export default function AdminPage() {
     // Verificar cache local primeiro
     if (localMusicsCache && localRepertoireCache && now - cacheTimestamp < CACHE_DURATION) {
       setMusics(localMusicsCache);
-      setRepertoire(localRepertoireCache);
+      setRepertoireView(localRepertoireCache);
       setLoading(false);
       return;
     }
@@ -133,7 +205,7 @@ export default function AdminPage() {
     try {
       const [musicsResponse, repertoireResponse] = await Promise.all([
         fetch("/api/musics"),
-        fetch("/api/repertoire"),
+        fetch("/api/repertoire?view=month"),
       ]);
 
       if (musicsResponse.ok) {
@@ -143,8 +215,10 @@ export default function AdminPage() {
       }
 
       if (repertoireResponse.ok) {
-        const repertoireData = await repertoireResponse.json();
-        setRepertoire(repertoireData);
+        const repertoireData = normalizeMonthRepertoireView(
+          await repertoireResponse.json()
+        ) as RepertoireMonthView;
+        setRepertoireView(repertoireData);
         localRepertoireCache = repertoireData;
       }
 
@@ -257,10 +331,7 @@ export default function AdminPage() {
         });
         setShowRepertoireForm(false);
         
-        // Atualizar cache local imediatamente
-        const newItem = await response.json();
-        setRepertoire(prev => [...prev, newItem]);
-        localRepertoireCache = [...(localRepertoireCache || []), newItem];
+        forceRefreshData();
         
         toast.success("Música adicionada ao repertório!");
       } else {
@@ -286,9 +357,11 @@ export default function AdminPage() {
         setMusics(prev => prev.filter(music => music.id !== id));
         localMusicsCache = (localMusicsCache || []).filter(music => music.id !== id);
         
-        // Remover do repertório se estiver lá
-        setRepertoire(prev => prev.filter(item => item.music.id !== id));
-        localRepertoireCache = (localRepertoireCache || []).filter(item => item.music.id !== id);
+        setRepertoireView((prev) => removeMusicFromView(prev, id));
+        localRepertoireCache = removeMusicFromView(
+          localRepertoireCache || EMPTY_REPERTOIRE_VIEW,
+          id
+        );
         
         toast.success("Música removida com sucesso!");
       } else {
@@ -338,17 +411,9 @@ export default function AdminPage() {
           music.id === updatedMusic.id ? updatedMusic : music
         );
         
-        // Atualizar no repertório se estiver lá
-        setRepertoire(prev => prev.map(item => 
-          item.music.id === updatedMusic.id 
-            ? { ...item, music: updatedMusic }
-            : item
-        ));
-        localRepertoireCache = (localRepertoireCache || []).map(item => 
-          item.music.id === updatedMusic.id 
-            ? { ...item, music: updatedMusic }
-            : item
-        );
+        const nextView = updateMusicInView(repertoireView, updatedMusic);
+        setRepertoireView(nextView);
+        localRepertoireCache = nextView;
         
         setEditFormData({
           id: "",
@@ -395,13 +460,9 @@ export default function AdminPage() {
       if (response.ok) {
         const updatedItem = await response.json();
         
-        // Atualizar cache local imediatamente
-        setRepertoire(prev => prev.map(item => 
-          item.id === updatedItem.id ? updatedItem : item
-        ));
-        localRepertoireCache = (localRepertoireCache || []).map(item => 
-          item.id === updatedItem.id ? updatedItem : item
-        );
+        const nextView = updateItemInView(repertoireView, updatedItem);
+        setRepertoireView(nextView);
+        localRepertoireCache = nextView;
         
         setSwapModal({ open: false, item: null });
         setSwapMusicId("");
@@ -418,7 +479,11 @@ export default function AdminPage() {
 
   // Função para gerar repertório automaticamente
   const handleGenerateRepertoire = async () => {
-    if (!confirm("Isso irá limpar o repertório atual e gerar um novo automaticamente. Continuar?")) {
+    if (
+      !confirm(
+        "Isso irá limpar todo o repertório deste mês e gerar: 2 músicas novas no topo + 3 músicas por semana (4 ou 5 semanas, conforme o mês). Continuar?"
+      )
+    ) {
       return;
     }
 
@@ -431,16 +496,17 @@ export default function AdminPage() {
       if (response.ok) {
         const result = await response.json();
         
-        // Atualizar o repertório na interface
-        if (result.repertoire) {
-          setRepertoire(result.repertoire);
-          localRepertoireCache = result.repertoire;
+        if (result.monthNew) {
+          const nextView = normalizeMonthRepertoireView(result) as RepertoireMonthView;
+          setRepertoireView(nextView);
+          localRepertoireCache = nextView;
         }
         
-        // Recarregar dados para garantir sincronização
-        fetchData();
+        forceRefreshData();
         
-        toast.success(`Repertório gerado com sucesso! ${result.total} músicas adicionadas.`);
+        toast.success(
+          `Repertório do mês gerado! ${result.sundaysCount ?? 1} domingo(s), ${result.total} músicas no total.`
+        );
       } else {
         const errorData = await response.json();
         toast.error(errorData.message || "Erro ao gerar repertório");
@@ -454,14 +520,16 @@ export default function AdminPage() {
   };
 
   const handleCopyRepertoireForWhatsApp = async () => {
-    if (repertoire.length === 0) {
+    if (!hasRepertoire(repertoireView)) {
       toast.error("Não há repertório para copiar");
       return;
     }
 
-    const message = formatRepertoireForWhatsApp(repertoire, {
-      siteUrl: window.location.origin,
-    });
+    const message = formatMonthRepertoireForWhatsApp(
+      repertoireView.monthNew,
+      repertoireView.weeks,
+      { siteUrl: window.location.origin }
+    );
 
     try {
       await navigator.clipboard.writeText(message);
@@ -471,12 +539,89 @@ export default function AdminPage() {
     }
   };
 
-  // Memoização das músicas filtradas para o select
+  const allRepertoireItems = useMemo(
+    () => flattenRepertoireItems(repertoireView),
+    [repertoireView]
+  );
+
+  const repertoireTotal = allRepertoireItems.length;
+
   const availableMusicsForRepertoire = useMemo(() => {
-    return musics.filter(music => 
-      !repertoire.some(item => item.music.id === music.id)
+    return musics.filter(
+      (music) => !allRepertoireItems.some((item) => item.music.id === music.id)
     );
-  }, [musics, repertoire]);
+  }, [musics, allRepertoireItems]);
+
+  const renderRepertoireItem = (item: RepertoireItem) => (
+    <Card key={item.id} className="border-l-4 border-l-primary">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <span className="inline-flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary text-primary-foreground text-xs sm:text-sm font-bold">
+              {item.position}
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm sm:text-base font-semibold truncate">
+                {truncateTitle(item.music.title)}
+              </h3>
+              {item.music.artist && (
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                  {item.music.artist}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            {isNewCatalogMusic(item.music.tags) && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                ⭐ Nova do mês
+              </span>
+            )}
+            {item.isManual && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                Manual
+              </span>
+            )}
+            {item.music.externalLink && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(item.music.externalLink, "_blank", "noopener,noreferrer");
+                }}
+                className="h-8 px-3"
+                title={
+                  item.music.externalLink.includes("spotify")
+                    ? "Abrir no Spotify"
+                    : "Abrir no YouTube"
+                }
+              >
+                <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSwapModal({ open: true, item })}
+              className="h-8 px-3"
+            >
+              Trocar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleViewMusic(item.music)}
+              className="h-8 px-3"
+            >
+              <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              <span className="hidden sm:inline">Ver</span>
+            </Button>
+          </div>
+        </CardTitle>
+      </CardHeader>
+    </Card>
+  );
 
   if (loading) {
     return (
@@ -527,13 +672,13 @@ export default function AdminPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-xl sm:text-2xl font-semibold flex items-center space-x-2">
                 <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span>Repertório Semanal ({repertoire.length})</span>
+                <span>Repertório do Mês ({repertoireTotal})</span>
               </h2>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   onClick={handleCopyRepertoireForWhatsApp}
-                  disabled={repertoire.length === 0}
+                  disabled={!hasRepertoire(repertoireView)}
                   className="w-full sm:w-auto"
                 >
                   <Copy className="w-4 h-4 mr-2" />
@@ -667,8 +812,8 @@ export default function AdminPage() {
             </div>
 
             {/* Lista do Repertório */}
-            <div className="space-y-3 sm:space-y-4">
-              {repertoire.length === 0 ? (
+            <div className="space-y-4 sm:space-y-6">
+              {!hasRepertoire(repertoireView) ? (
                 <div className="text-center py-8 sm:py-12">
                   <div className="space-y-3 sm:space-y-4">
                     <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground mx-auto" />
@@ -677,7 +822,7 @@ export default function AdminPage() {
                         Nenhum repertório definido
                       </h3>
                       <p className="text-sm sm:text-base text-muted-foreground mb-4">
-                        Use o botão "Gerar Automático" para criar um repertório ou adicione músicas manualmente.
+                        Use &quot;Gerar Automático&quot; para gerar 2 músicas novas do mês + 3 por semana (4 ou 5 semanas), ou adicione manualmente.
                       </p>
                       <Button onClick={handleGenerateRepertoire} disabled={generatingRepertoire}>
                         {generatingRepertoire ? (
@@ -696,72 +841,36 @@ export default function AdminPage() {
                   </div>
                 </div>
               ) : (
-                repertoire.map((item) => (
-                  <Card key={item.id} className="border-l-4 border-l-primary">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-                        <div className="flex items-center space-x-2 sm:space-x-3">
-                          <span className="inline-flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary text-primary-foreground text-xs sm:text-sm font-bold">
-                            {item.position}
+                <>
+                  {repertoireView.monthNew.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                        <Star className="w-4 h-4 text-yellow-500" />
+                        Músicas novas do mês
+                      </h3>
+                      <div className="space-y-3">
+                        {repertoireView.monthNew.map(renderRepertoireItem)}
+                      </div>
+                    </div>
+                  )}
+
+                  {repertoireView.weeks.map((week) =>
+                    week.items.length > 0 ? (
+                      <div key={week.weekNumber} className="space-y-3">
+                        <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Semana {week.weekNumber}
+                          <span className="text-sm font-normal text-muted-foreground">
+                            ({new Date(week.sunday + "T12:00:00").toLocaleDateString("pt-BR")})
                           </span>
-                          <div className="min-w-0 flex-1">
-                            <h3 className="text-sm sm:text-base font-semibold truncate">
-                              {truncateTitle(item.music.title)}
-                            </h3>
-                            {item.music.artist && (
-                              <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                                {item.music.artist}
-                              </p>
-                            )}
-                          </div>
+                        </h3>
+                        <div className="space-y-3">
+                          {week.items.map(renderRepertoireItem)}
                         </div>
-                        <div className="flex items-center space-x-2">
-                          {item.music.isNewOfWeek && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-                              ⭐ Nova da Semana
-                            </span>
-                          )}
-                          {item.isManual && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                              Manual
-                            </span>
-                          )}
-                          {item.music.externalLink && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(item.music.externalLink, "_blank", "noopener,noreferrer");
-                              }}
-                              className="h-8 px-3"
-                              title={item.music.externalLink.includes("spotify") ? "Abrir no Spotify" : "Abrir no YouTube"}
-                            >
-                              <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSwapModal({ open: true, item })}
-                            className="h-8 px-3"
-                          >
-                            Trocar
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewMusic(item.music)}
-                            className="h-8 px-3"
-                          >
-                            <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                            <span className="hidden sm:inline">Ver</span>
-                          </Button>
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                  </Card>
-                ))
+                      </div>
+                    ) : null
+                  )}
+                </>
               )}
             </div>
           </div>

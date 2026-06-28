@@ -2,14 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { AUTH_CONFIG } from "@/lib/auth";
-import { getWeekStart, getWeekEnd } from "@/lib/utils";
-import {
-  REPERTOIRE_SIZE,
-  getOtherMusicsCount,
-  getRepertoirePositions,
-} from "@/lib/repertoire";
+import { generateMonthlyRepertoire } from "@/lib/repertoire-generate";
+import { fetchMonthRepertoireView } from "@/lib/repertoire-query";
 
-// Middleware para verificar autenticação
 async function verifyAuth(request: NextRequest) {
   const token = request.cookies.get("auth-token")?.value;
 
@@ -32,121 +27,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    // Calcular o início e fim da semana (segunda-feira às 03h) para limpar apenas o repertório desta semana
-    // A semana começa na segunda-feira às 03h
-    const weekStart = getWeekStart();
-    const weekEnd = getWeekEnd();
-
-    // Limpar repertório apenas da semana atual
-    await prisma.weeklyRepertoire.deleteMany({
-      where: {
-        weekStart: {
-          gte: weekStart,
-          lt: weekEnd,
-        },
-      },
-    });
-
-    // Buscar música nova da semana (se existir)
-    const newOfWeekMusic = await prisma.music.findFirst({
-      where: { isNewOfWeek: true },
-      select: { id: true, title: true },
-    });
-
-    // Buscar todas as músicas disponíveis (excluindo a nova da semana)
-    const allAvailableMusics = await prisma.music.findMany({
-      where: newOfWeekMusic ? { id: { not: newOfWeekMusic.id } } : {},
-      select: { id: true, title: true },
-    });
-
-    // Função para embaralhar array aleatoriamente (Fisher-Yates shuffle)
-    function shuffleArray<T>(array: T[]): T[] {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      return shuffled;
-    }
-
-    const musicsNeeded = getOtherMusicsCount(!!newOfWeekMusic);
-
-    if (allAvailableMusics.length < musicsNeeded) {
-      const totalMusics = (newOfWeekMusic ? 1 : 0) + allAvailableMusics.length;
-      return NextResponse.json(
-        {
-          message: `Não há músicas suficientes para gerar o repertório. Necessário: ${REPERTOIRE_SIZE}, Disponível: ${totalMusics}`,
-          available: totalMusics,
-          required: REPERTOIRE_SIZE,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Embaralhar músicas aleatoriamente e pegar as necessárias
-    const shuffledMusics = shuffleArray(allAvailableMusics);
-    const otherMusics = shuffledMusics.slice(0, musicsNeeded);
-
-    // Preparar dados para o repertório
-    const repertoireData = [];
-
-    // Posição 1: Música nova da semana (se existir)
-    if (newOfWeekMusic) {
-      repertoireData.push({
-        musicId: newOfWeekMusic.id,
-        position: 1,
-        isManual: false,
-        weekStart,
-      });
-    }
-
-    const positionsToFill = getRepertoirePositions(!!newOfWeekMusic);
-
-    otherMusics.forEach((music, index) => {
-      const position = positionsToFill[index];
-      repertoireData.push({
-        musicId: music.id,
-        position,
-        isManual: false,
-        weekStart,
-      });
-    });
-
-    // Criar o repertório
-    await prisma.weeklyRepertoire.createMany({
-      data: repertoireData,
-    });
-
-    // Buscar o repertório criado para retornar
-    const createdRepertoire = await prisma.weeklyRepertoire.findMany({
-      where: {
-        weekStart: {
-          gte: weekStart,
-          lt: weekEnd,
-        },
-      },
-      include: {
-        music: {
-          select: {
-            id: true,
-            title: true,
-            artist: true,
-            lyrics: true,
-            chords: true,
-            externalLink: true,
-            isNewOfWeek: true,
-          },
-        },
-      },
-      orderBy: { position: "asc" },
-    });
+    const now = new Date();
+    const plan = await generateMonthlyRepertoire(prisma, now);
+    const monthView = await fetchMonthRepertoireView(prisma, now);
 
     return NextResponse.json(
       {
-        message: "Repertório gerado automaticamente com sucesso",
-        repertoire: createdRepertoire,
-        total: createdRepertoire.length,
-        weekStart: weekStart.toISOString().split("T")[0], // Data formatada
+        message: `Repertório do mês gerado com sucesso (${plan.sundaysCount} semana(s))`,
+        ...monthView,
+        total: plan.entries.length,
+        sundaysCount: plan.sundaysCount,
+        newMusicsCount: plan.newMusics.length,
+        baseMusicsPerWeek: plan.weeks[0]?.baseMusics.length ?? 0,
       },
       {
         headers: {
@@ -159,14 +51,20 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Erro ao gerar repertório:", error);
+    const message =
+      error instanceof Error ? error.message : "Erro interno do servidor";
+    const isValidation =
+      error instanceof Error &&
+      (message.includes("Não há") || message.includes("Não há domingos"));
+
     return NextResponse.json(
       {
-        message: "Erro interno do servidor",
+        message,
         ...(process.env.NODE_ENV === "development" && {
           error: error instanceof Error ? error.message : "Erro desconhecido",
         }),
       },
-      { status: 500 }
+      { status: isValidation ? 400 : 500 }
     );
   }
 }

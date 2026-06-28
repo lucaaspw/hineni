@@ -1,4 +1,5 @@
 import { getWeekStart, getWeekEnd } from "@/lib/utils";
+import { isNewCatalogMusic } from "@/lib/music-tags";
 
 export interface RepertoireMessageItem {
   position: number;
@@ -6,7 +7,7 @@ export interface RepertoireMessageItem {
     title: string;
     artist?: string | null;
     externalLink?: string | null;
-    isNewOfWeek?: boolean;
+    tags?: string[];
   };
 }
 
@@ -18,51 +19,95 @@ function formatWeekRange(weekStart: Date, weekEnd: Date): string {
   return `${fmt(weekStart)} a ${fmt(end)}`;
 }
 
-function sortRepertoireItems(items: RepertoireMessageItem[]): RepertoireMessageItem[] {
-  return [...items].sort((a, b) => {
-    if (a.music.isNewOfWeek && !b.music.isNewOfWeek) return -1;
-    if (!a.music.isNewOfWeek && b.music.isNewOfWeek) return 1;
-    return a.position - b.position;
-  });
+function formatMusicLine(item: RepertoireMessageItem, index: number): string[] {
+  const { music } = item;
+  const artist = music.artist?.trim();
+  const titleLine = artist
+    ? `*${music.title}* — ${artist}`
+    : `*${music.title}*`;
+
+  let line = `${index + 1}. ${titleLine}`;
+  if (isNewCatalogMusic(music.tags)) {
+    line += " ⭐";
+  }
+
+  const lines = [line];
+  if (music.externalLink?.trim()) {
+    lines.push(`   🔗 ${music.externalLink.trim()}`);
+  }
+  return lines;
 }
 
 export function formatRepertoireForWhatsApp(
   items: RepertoireMessageItem[],
-  options?: { siteUrl?: string }
+  options?: { siteUrl?: string; monthNew?: RepertoireMessageItem[] }
 ): string {
-  if (items.length === 0) {
+  const monthNew = options?.monthNew ?? [];
+  const weekItems = items;
+
+  if (monthNew.length === 0 && weekItems.length === 0) {
     return "";
   }
 
   const weekStart = getWeekStart();
   const weekEnd = getWeekEnd();
-  const sorted = sortRepertoireItems(items);
-
   const lines: string[] = [
     "*Repertório da Semana* 🎵",
     `_${formatWeekRange(weekStart, weekEnd)}_`,
     "",
   ];
 
-  sorted.forEach((item, index) => {
-    const { music } = item;
-    const artist = music.artist?.trim();
-    const titleLine = artist
-      ? `*${music.title}* — ${artist}`
-      : `*${music.title}*`;
+  if (monthNew.length > 0) {
+    lines.push("*Músicas novas do mês* ⭐");
+    monthNew.forEach((item, index) => {
+      lines.push(...formatMusicLine(item, index));
+    });
+    lines.push("");
+  }
 
-    let line = `${index + 1}. ${titleLine}`;
-    if (music.isNewOfWeek) {
-      line += " ⭐";
-    }
-    lines.push(line);
+  if (weekItems.length > 0) {
+    lines.push("*Esta semana*");
+    weekItems.forEach((item, index) => {
+      lines.push(...formatMusicLine(item, index));
+    });
+    lines.push("");
+  }
 
-    if (music.externalLink?.trim()) {
-      lines.push(`   🔗 ${music.externalLink.trim()}`);
-    }
-  });
+  if (options?.siteUrl) {
+    lines.push(`Cifras e letras: ${options.siteUrl}`);
+  }
 
-  lines.push("");
+  return lines.join("\n");
+}
+
+export function formatMonthRepertoireForWhatsApp(
+  monthNew: RepertoireMessageItem[],
+  weeks: Array<{ weekNumber: number; items: RepertoireMessageItem[] }>,
+  options?: { siteUrl?: string }
+): string {
+  if (monthNew.length === 0 && weeks.every((w) => w.items.length === 0)) {
+    return "";
+  }
+
+  const lines: string[] = ["*Repertório do Mês* 🎵", ""];
+
+  if (monthNew.length > 0) {
+    lines.push("*Músicas novas do mês* ⭐");
+    monthNew.forEach((item, index) => {
+      lines.push(...formatMusicLine(item, index));
+    });
+    lines.push("");
+  }
+
+  for (const week of weeks) {
+    if (week.items.length === 0) continue;
+    lines.push(`*Semana ${week.weekNumber}*`);
+    week.items.forEach((item, index) => {
+      lines.push(...formatMusicLine(item, index));
+    });
+    lines.push("");
+  }
+
   if (options?.siteUrl) {
     lines.push(`Cifras e letras: ${options.siteUrl}`);
   }

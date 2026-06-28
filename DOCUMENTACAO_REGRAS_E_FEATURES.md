@@ -72,14 +72,13 @@ Stack principal:
 
 ### 3.2 Repertorio semanal
 
-- O repertorio trabalha com **5 posicoes** (`1` a `5`) nas regras atuais de API e UI.
-- Nao pode adicionar item fora do intervalo 1..5.
+- O repertorio trabalha com **3 posicoes por semana** (`1` a `3`) + **2 novas do mes** no topo.
+- Nao pode adicionar item fora do intervalo 1..3 na semana atual.
 - Nao pode repetir a mesma musica no repertorio da semana atual.
-- Nao pode ocupar uma posicao ja utilizada na semana atual.
-- Limite de 5 musicas por repertorio.
-- Ordenacao de leitura:
-  - Primeiro "musica nova da semana".
-  - Depois por posicao crescente.
+- Limite de 3 musicas por semana (+ 2 novas do mes exibidas separadamente).
+- Ordenacao de leitura na pagina publica:
+  - Primeiro bloco "musicas novas do mes" (2 fixas).
+  - Depois bloco "esta semana" (3 musicas), por posicao crescente.
 
 Regra de semana:
 
@@ -88,15 +87,15 @@ Regra de semana:
 
 ### 3.3 Geracao automatica do repertorio
 
-- Requer autenticacao.
-- Limpa apenas o repertorio da semana atual.
-- Se houver musica nova da semana:
-  - Ela entra fixa na posicao 1.
-  - Outras 4 posicoes sao sorteadas.
-- Se nao houver musica nova da semana:
-  - Sorteia 5 musicas para posicoes 1..5.
-- Embaralhamento usa estrategia Fisher-Yates.
-- Se nao houver musicas suficientes, retorna erro 400.
+- **Automatica:** no dia **1 de cada mes** (cron Vercel `0 6 1 * *`, requer `CRON_SECRET` em producao).
+- **Manual:** botao no admin (`POST /api/repertoire/generate`), requer autenticacao.
+- Limpa todo o repertorio do mes e gera de uma vez para **todos os domingos do mes** (4 ou 5 semanas).
+- Composicao:
+  - **2 musicas novas do mes** (tag `Nova`), exibidas no topo, armazenadas com `weekStart = dia 1 do mes`.
+  - **3 musicas da base por semana** (sem tag `Nova`), unicas por domingo/semana.
+- Musicas novas: catalogo com tag `Nova` (ver `data/musicas_novas.json` e `npm run db:import-musicas-novas`).
+- Musicas da base: as mais antigas (`createdAt` asc) ainda nao usadas no mes; se faltar, completa com as mais antigas da base.
+- Se nao houver musicas suficientes (minimo 2 novas + 3 x numero de domingos da base), retorna erro 400.
 
 ### 3.4 Escala de adoracao
 
@@ -250,10 +249,9 @@ Scripts principais:
 
 ## 9) Observacoes importantes (estado atual)
 
-1. **Divergencia de tamanho do repertorio**
-   - Regra real do sistema (UI + APIs): 5 musicas.
-   - `repertoireSchema` em validacoes indica 6 posicoes.
-   - Comentario no schema Prisma ainda cita posicao 1-5 (alinhado com 5).
+1. **Tamanho do repertorio**
+   - Regra atual: 2 novas do mes (topo) + 3 musicas por semana.
+   - Geracao mensal automatica no dia 1 via cron Vercel.
 
 2. **Escala da pagina vs API**
    - A tela `/escala` consome arquivo estatico `data/escala-2026.json`.
